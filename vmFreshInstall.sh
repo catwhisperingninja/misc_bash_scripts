@@ -5,10 +5,9 @@ sudo apt update
 
 # Install curl
 sudo apt install -y curl
-sudo apt install -y ifconfig
 sudo apt install -y net-tools
 sudo apt install -y multiverse
-sudo apt install -y ubuntu-restricted-extras
+# sudo apt install -y ubuntu-restricted-extras
 sudo apt install -y libfuse2
 
 # Install Brave Browser
