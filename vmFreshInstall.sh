@@ -17,12 +17,5 @@ echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" 
 sudo apt update
 sudo apt install -y code
 
-# Install Node JS via NVM (version is hardcoded)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | basH
-export NVM_DIR="$HOME/.nvm"
-nvm list-remote
-nvm install lts/iron
-node -v
-
 
 
