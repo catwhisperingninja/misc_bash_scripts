@@ -7,8 +7,6 @@ sudo apt update
 sudo apt install -y curl
 sudo apt install -y net-tools
 sudo apt install -y multiverse
-# sudo apt install -y ubuntu-restricted-extras
-sudo apt install -y libfuse2
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
