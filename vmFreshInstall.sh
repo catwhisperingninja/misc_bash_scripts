@@ -8,7 +8,7 @@ sudo apt install -y curl
 sudo apt install -y net-tools
 
 # Install fastfetch
-sudo add-aptrepository ppa:zhangsongcui3371/fastfetch
+sudo add-apt-repository ppa:zhangsongcui3371/fastfetch
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
