@@ -1,1 +1,3 @@
-# misc_bash_scripts
+# Stuff I always install
+
+For easy Ubuntu VM setup
