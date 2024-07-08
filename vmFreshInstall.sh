@@ -7,6 +7,7 @@ sudo apt update
 sudo apt install -y curl
 sudo apt install -y net-tools
 sudo apt install -y htop
+sudo apt install -y bridge-utils
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
@@ -17,6 +18,6 @@ sudo apt install -y code
 
 # install fastfetch
 
-#sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 
-#sudo apt install -y fastfetch
+sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 
+sudo apt install -y fastfetch
 
