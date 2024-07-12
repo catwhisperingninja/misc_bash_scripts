@@ -24,7 +24,7 @@ sudo apt install -y code
 sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 
 sudo apt install -y fastfetch
 
-#prepare for Docker
+#prepare for Docker#
 # Add Docker's official GPG key:
 sudo apt-get update
 sudo apt-get install ca-certificates curl
