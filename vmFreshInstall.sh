@@ -39,29 +39,6 @@ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 
-# Install Linux Powershell
-###################################
-# Update the list of packages
-sudo apt-get update
-
-# Install pre-requisite packages.
-sudo apt-get install -y wget apt-transport-https software-properties-common
-
-# Get the version of Ubuntu
-source /etc/os-release
-
-# Download the Microsoft repository keys
-wget -q https://packages.microsoft.com/config/ubuntu/$VERSION_ID/packages-microsoft-prod.deb
-
-# Register the Microsoft repository keys
-sudo dpkg -i packages-microsoft-prod.deb
-
-# Delete the Microsoft repository keys file
-rm packages-microsoft-prod.deb
-
-# Update the list of packages after we added packages.microsoft.com
-sudo apt-get update
-
-###################################
-# Install PowerShell
-sudo apt-get install -y powershell
+# Install nvm version 0.40.0
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+source ~/.bashrc
