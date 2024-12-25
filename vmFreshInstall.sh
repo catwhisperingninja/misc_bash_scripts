@@ -12,6 +12,7 @@ sudo apt install -y jq
 sudo apt install -y git
 sudo apt install -y openssh-server
 sudo apt install -y openssh-client
+sudo apt install -y bleachbit
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
@@ -42,3 +43,24 @@ sudo apt-get update
 # Install nvm version 0.40.1
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 source ~/.bashrc
+
+# Install Powerline fonts
+git clone https://github.com/powerline/fonts.git --depth=1
+cd fonts
+./install.sh
+cd ..
+rm -rf fonts
+
+# Install zsh
+sudo apt install -y zsh
+
+# Make zsh the default shell
+chsh -s $(which zsh)
+
+# Install Powerlevel10k
+git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
+echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
+
+# Note: p10k configure will run automatically on first zsh startup
+# The user will need to log out and log back in (or restart the system) 
+# for the shell change to take effect
