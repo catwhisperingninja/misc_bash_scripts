@@ -1,3 +1,3 @@
 # Stuff I always install
 
-For easy Ubuntu VM setup
+For aadvanced Ubuntu VM setup
