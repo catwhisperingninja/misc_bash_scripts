@@ -7,8 +7,6 @@ sudo apt update
 sudo apt install -y curl
 sudo apt install -y net-tools
 sudo apt install -y htop
-sudo apt install -y bridge-utils
-sudo apt install -y jq
 sudo apt install -y git
 sudo apt install -y openssh-server
 sudo apt install -y openssh-client
