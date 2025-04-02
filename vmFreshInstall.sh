@@ -26,6 +26,11 @@ sudo apt install -y fastfetch
 # install brave-browser
 curl -fsS https://dl.brave.com/install.sh | sh
 
+# install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+poetry completions bash >> ~/.bash_completion
+
+
 #prepare for Docker#
 # Add Docker's official GPG key:
 sudo apt-get update
