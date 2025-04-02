@@ -26,11 +26,6 @@ sudo apt install -y fastfetch
 # install brave-browser
 curl -fsS https://dl.brave.com/install.sh | sh
 
-# install Poetry
-curl -sSL https://install.python-poetry.org | python3 -
-poetry completions bash >> ~/.bash_completion
-
-
 #prepare for Docker#
 # Add Docker's official GPG key:
 sudo apt-get update
@@ -60,6 +55,10 @@ sudo apt install -y zsh
 
 # Make zsh the default shell
 chsh -s $(which zsh)
+
+# install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+poetry completions zsh > ~/.zfunc/_poetry
 
 # Install Powerlevel10k
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
