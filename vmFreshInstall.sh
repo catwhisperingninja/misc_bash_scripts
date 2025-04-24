@@ -27,6 +27,4 @@ cd fonts
 git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
 echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
 
-# Note: p10k configure will run automatically on first zsh startup
-# The user will need to log out and log back in (or restart the system)
-# for the shell change to take effect
+# Note: zsh now installed on Kali by default
