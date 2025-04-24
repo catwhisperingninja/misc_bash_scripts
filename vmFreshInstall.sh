@@ -18,7 +18,6 @@ sudo apt install -y fastfetch
 # install kitty themes
 kitten themes 'Base2Tone Evening Dark' &&
 kitten themes 'Base2Tone Space Dark' &&
-kitten themes 'Base4Tone_Classic_W_Dark' &&
 kitten themes 'Bright Lights' &&
 kitten themes 'Cyberpunk Neon' &&
 kitten themes 'Duotone Dark' &&
