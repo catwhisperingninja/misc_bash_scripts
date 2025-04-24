@@ -15,8 +15,26 @@ sudo apt install -y net-tools
 sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch
 sudo apt install -y fastfetch
 
+# install kitty themes
+kitten themes 'Base2Tone Evening Dark' &&
+kitten themes 'Base2Tone Space Dark' &&
+kitten themes 'Base4Tone_Classic_W_Dark' &&
+kitten themes 'Bright Lights' &&
+kitten themes 'Cyberpunk Neon' &&
+kitten themes 'Duotone Dark' &&
+kitten themes 'Farin' &&
+kitten themes 'Monokai Pro (Filter Machine)' &&
+kitten themes 'Night Lion V1' &&
+kitten themes 'noirblaze' &&
+kitten themes 'noirbuddy-oxide' &&
+kitten themes 'Symphonic' &&
+kitten themes 'Tokyo Night Moon' &&
+kitten themes 'Tropical Neon' &&
+kitten themes 'Urple' &&
+
+
 # install brave-browser
-curl -fsS https://dl.brave.com/install.sh | sh
+# curl -fsS https://dl.brave.com/install.sh | sh
 
 # Install Powerline fonts
 git clone https://github.com/powerline/fonts.git --depth=1
