@@ -1,0 +1,21 @@
+{
+  "name": "jwt-generator",
+  "version": "1.0.0",
+  "description": "A simple JWT generator for Node.js",
+  "main": "generateJWT.js",
+  "scripts": {
+    "generate-keys": "node jwt/generate-KeyPair.js",
+    "generate-jwt": "node generateJWT.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "jwt",
+    "json web token",
+    "authentication"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2"
+  }
+}
