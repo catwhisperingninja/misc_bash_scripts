@@ -1,6 +1,6 @@
 # Basic JWT Generation: NodeJS
 ## Overview
-This project demonstrates how to generate JSON Web Tokens (JWT) in Node.js using the `jsonwebtoken` package.
+This project demonstrates how to generate JSON Web Tokens (JWT) in Node.js using the `jsonwebtoken` package with Ed25519 keys.
 
 ## Prerequisites
 - Node.js installed
@@ -16,7 +16,7 @@ This project demonstrates how to generate JSON Web Tokens (JWT) in Node.js using
 ## Usage
 
 ### Generate a Key Pair
-First, generate the RSA key pair (this creates the required `private_key.pem` file):
+First, generate the Ed25519 key pair (this creates the required `private_key.pem` file):
 ```
 npm run generate-keys
 ```
@@ -28,8 +28,12 @@ npm run generate-jwt
 ```
 
 ## Configuration
-- The JWT is signed using the RS256 algorithm with a 10-minute expiration time
+- The JWT is signed using the EdDSA algorithm with Ed25519 keys and a 10-minute expiration time
 - Update the `KEY_ID` constant in `generateJWT.js` with your specific key ID
+
+## Security Notes
+- Ed25519 is a modern digital signature algorithm that offers better security than RSA with smaller keys and faster operations
+- The key size is fixed for Ed25519 and offers equivalent security to RSA-3000
 
 ## License
 MIT
