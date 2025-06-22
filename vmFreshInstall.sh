@@ -11,6 +11,7 @@ sudo apt install -y git
 sudo apt install -y openssh-server
 sudo apt install -y openssh-client
 sudo apt install -y bleachbit
+sudo apt install -y libfuse2
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
@@ -67,3 +68,10 @@ echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
 # Note: p10k configure will run automatically on first zsh startup
 # The user will need to log out and log back in (or restart the system) 
 # for the shell change to take effect
+
+# Create a new ssh key
+SSH_KEY_NAME="$USER@$(hostname)"
+ssh-keygen -t ed25519 -C "$SSH_KEY_NAME" -f ~/.ssh/$SSH_KEY_NAME -N "\
+
+# Add the new ssh key to the ssh agent
+ssh-add ~/.ssh/$SSH_KEY_NAME
