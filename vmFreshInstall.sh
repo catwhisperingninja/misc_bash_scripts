@@ -12,6 +12,7 @@ sudo apt install -y jq
 sudo apt install -y git
 sudo apt install -y openssh-server
 sudo apt install -y openssh-client
+sudo apt install -y yt-dlp
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
