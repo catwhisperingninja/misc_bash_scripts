@@ -12,6 +12,7 @@ sudo apt install -y openssh-server
 sudo apt install -y openssh-client
 sudo apt install -y bleachbit
 sudo apt install -y libfuse2
+sudo apt install -y gh
 
 # Install Visual Studio Code
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
@@ -42,8 +43,8 @@ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 sudo apt-get update
 
-# Install nvm version 0.40.2
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+# Install nvm version 0.40.3
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 source ~/.bashrc
 
 # Install Powerline fonts
