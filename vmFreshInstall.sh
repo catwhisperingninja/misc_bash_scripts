@@ -25,9 +25,6 @@ sudo apt install -y code
 sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 
 sudo apt install -y fastfetch
 
-# install brave-browser
-curl -fsS https://dl.brave.com/install.sh | sh
-
 #prepare for Docker#
 # Add Docker's official GPG key:
 sudo apt-get update
