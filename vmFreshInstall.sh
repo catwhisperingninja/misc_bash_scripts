@@ -1,73 +1,139 @@
 #!/bin/bash
 
-# Update the package list
+echo "=== VM Fresh Install Script ==="
+echo "Installing essential development tools..."
+echo ""
+
+# Update the package list (CRITICAL)
+echo "Updating package list..."
 sudo apt update
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to update package list. Check your internet connection."
+    exit 1
+fi
 
-# Install curl
-sudo apt install -y curl
-sudo apt install -y net-tools
-sudo apt install -y htop
-sudo apt install -y git
-sudo apt install -y openssh-server
-sudo apt install -y openssh-client
-sudo apt install -y bleachbit
-sudo apt install -y libfuse2
-sudo apt install -y gh
+# Install essential packages (CRITICAL)
+echo "Installing essential packages..."
+sudo apt install -y curl net-tools htop git openssh-server openssh-client bleachbit libfuse2 gh
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install essential packages. Cannot continue."
+    exit 1
+fi
+echo "✓ Essential packages installed successfully"
 
-# Install Visual Studio Code
+# Install Visual Studio Code (CRITICAL)
+echo ""
+echo "Installing Visual Studio Code..."
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
 sudo install -o root -g root -m 644 microsoft.gpg /etc/apt/trusted.gpg.d/
 echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
 sudo apt update
 sudo apt install -y code
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install Visual Studio Code. Cannot continue."
+    exit 1
+fi
+echo "✓ Visual Studio Code installed successfully"
 
-# install fastfetch
-sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 
-sudo apt install -y fastfetch
+# Install fastfetch (OPTIONAL)
+echo ""
+echo "Installing fastfetch..."
+sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch 2>/dev/null && sudo apt install -y fastfetch
+if [ $? -eq 0 ]; then
+    echo "✓ fastfetch installed successfully"
+else
+    echo "⚠ Warning: fastfetch installation failed, skipping..."
+fi
 
-#prepare for Docker#
-# Add Docker's official GPG key:
-sudo apt-get update
-sudo apt-get install ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
+# Prepare for Docker (OPTIONAL)
+echo ""
+echo "Setting up Docker repository..."
+{
+    sudo apt-get update &&
+    sudo apt-get install ca-certificates curl &&
+    sudo install -m 0755 -d /etc/apt/keyrings &&
+    sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc &&
+    sudo chmod a+r /etc/apt/keyrings/docker.asc &&
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+$(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null &&
+    sudo apt-get update
+} 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✓ Docker repository setup completed"
+else
+    echo "⚠ Warning: Docker repository setup failed, skipping..."
+fi
 
-# Add the Docker repository to Apt sources:
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-
-# Install nvm version 0.40.3
+# Install nvm version 0.40.3 (CRITICAL)
+echo ""
+echo "Installing nvm (Node Version Manager)..."
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install nvm. Cannot continue."
+    exit 1
+fi
 source ~/.bashrc
+echo "✓ nvm installed successfully"
 
-# Install Powerline fonts
-git clone https://github.com/powerline/fonts.git --depth=1
-cd fonts
-./install.sh
+# Install Powerline fonts (OPTIONAL)
+echo ""
+echo "Installing Powerline fonts..."
+{
+    git clone https://github.com/powerline/fonts.git --depth=1 2>/dev/null &&
+    cd fonts &&
+    ./install.sh 2>/dev/null &&
+    cd ..
+} 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✓ Powerline fonts installed successfully"
+else
+    echo "⚠ Warning: Powerline fonts installation failed, skipping..."
+fi
 
-# Install zsh
-sudo apt install -y zsh
+# Install zsh (OPTIONAL)
+echo ""
+echo "Installing zsh shell..."
+sudo apt install -y zsh 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✓ zsh installed successfully"
+    echo "Setting zsh as default shell..."
+    chsh -s $(which zsh) 2>/dev/null || echo "⚠ Warning: Could not set zsh as default shell"
+else
+    echo "⚠ Warning: zsh installation failed, skipping..."
+fi
 
-# Make zsh the default shell
-chsh -s $(which zsh)
-
-# install Poetry
+# Install Poetry (CRITICAL)
+echo ""
+echo "Installing Poetry package manager..."
 curl -sSL https://install.python-poetry.org | python3 -
-poetry completions zsh > ~/.zfunc/_poetry
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install Poetry. Cannot continue."
+    exit 1
+fi
+# Try to set up poetry completions (optional part)
+mkdir -p ~/.zfunc 2>/dev/null
+poetry completions zsh > ~/.zfunc/_poetry 2>/dev/null || echo "⚠ Warning: Could not set up Poetry zsh completions"
+echo "✓ Poetry installed successfully"
 
-# Install Powerlevel10k
-git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k
-echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
+# Install Powerlevel10k (OPTIONAL)
+echo ""
+echo "Installing Powerlevel10k theme..."
+{
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ~/powerlevel10k 2>/dev/null &&
+    echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
+} 2>/dev/null
+if [ $? -eq 0 ]; then
+    echo "✓ Powerlevel10k installed successfully"
+else
+    echo "⚠ Warning: Powerlevel10k installation failed, skipping..."
+fi
 
 # Note: p10k configure will run automatically on first zsh startup
 # The user will need to log out and log back in (or restart the system) 
 # for the shell change to take effect
 
-# Create a new ssh key
+# Create a new ssh key (CRITICAL)
 echo ""
 echo "=== SSH Key Generation ==="
 echo "We'll now create an SSH key for secure authentication."
@@ -94,11 +160,35 @@ echo ""
 read -p "Enter full SSH key name (or press Enter for '$DEFAULT_KEY_NAME'): " SSH_KEY_NAME
 SSH_KEY_NAME=${SSH_KEY_NAME:-$DEFAULT_KEY_NAME}
 
+# Ensure .ssh directory exists
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+
 echo ""
 echo "Creating SSH key: $SSH_KEY_NAME"
 ssh-keygen -t ed25519 -C "$SSH_KEY_NAME" -f ~/.ssh/$SSH_KEY_NAME -N ""
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to create SSH key. Cannot continue."
+    exit 1
+fi
 
 # Add the new ssh key to the ssh agent
 echo "Adding SSH key to ssh-agent..."
 ssh-add ~/.ssh/$SSH_KEY_NAME
-echo "SSH key created and added successfully!"
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to add SSH key to ssh-agent. Cannot continue."
+    exit 1
+fi
+echo "✓ SSH key created and added successfully!"
+
+echo ""
+echo "=== Installation Complete ==="
+echo "Your development environment is ready!"
+echo ""
+echo "Next steps:"
+echo "1. Log out and log back in (or restart) for shell changes to take effect"
+echo "2. Your SSH public key is located at: ~/.ssh/$SSH_KEY_NAME.pub"
+echo "3. Add this public key to your Git hosting service (GitHub, GitLab, etc.)"
+echo ""
+echo "To display your public key, run:"
+echo "cat ~/.ssh/$SSH_KEY_NAME.pub"
