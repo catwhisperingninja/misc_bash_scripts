@@ -68,8 +68,37 @@ echo 'source ~/powerlevel10k/powerlevel10k.zsh-theme' >>~/.zshrc
 # for the shell change to take effect
 
 # Create a new ssh key
-SSH_KEY_NAME="$USER@$(hostname)"
-ssh-keygen -t ed25519 -C "$SSH_KEY_NAME" -f ~/.ssh/$SSH_KEY_NAME -N "\
+echo ""
+echo "=== SSH Key Generation ==="
+echo "We'll now create an SSH key for secure authentication."
+echo ""
+echo "About hostnames vs IP addresses:"
+echo "- Your hostname is the human-readable name of your computer: $(hostname)"
+echo "- This is essentially the same as your IP address, but much easier to remember"
+echo "- It helps identify which machine this SSH key belongs to"
+echo ""
+echo "SSH Key Naming:"
+echo "You can customize your SSH key name to make it more meaningful."
+echo "For example, append '-GH' for GitHub keys, '-GL' for GitLab, etc."
+echo "Default format will be: $USER@[hostname-or-identifier]"
+echo ""
+
+# Get custom hostname/identifier
+echo "Current hostname: $(hostname)"
+read -p "Enter a custom identifier for this key (or press Enter to use '$(hostname)'): " CUSTOM_HOSTNAME
+HOSTNAME_PART=${CUSTOM_HOSTNAME:-$(hostname)}
+
+# Get full SSH key name
+DEFAULT_KEY_NAME="$USER@$HOSTNAME_PART"
+echo ""
+read -p "Enter full SSH key name (or press Enter for '$DEFAULT_KEY_NAME'): " SSH_KEY_NAME
+SSH_KEY_NAME=${SSH_KEY_NAME:-$DEFAULT_KEY_NAME}
+
+echo ""
+echo "Creating SSH key: $SSH_KEY_NAME"
+ssh-keygen -t ed25519 -C "$SSH_KEY_NAME" -f ~/.ssh/$SSH_KEY_NAME -N ""
 
 # Add the new ssh key to the ssh agent
+echo "Adding SSH key to ssh-agent..."
 ssh-add ~/.ssh/$SSH_KEY_NAME
+echo "SSH key created and added successfully!"
