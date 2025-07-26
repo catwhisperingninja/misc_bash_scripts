@@ -19,9 +19,11 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Failed to install essential packages. Cannot continue."
     exit 1
 fi
-echo "✓ Essential packages installed successfully"
 
-# Install Visual Studio Code (CRITICAL)
+# Install Brave Browser (OPTIONAL)
+curl -fsS https://dl.brave.com/install.sh | sh
+
+# Install Visual Studio Code (OPTIONAL)
 echo ""
 echo "Installing Visual Studio Code..."
 curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
@@ -64,17 +66,6 @@ if [ $? -eq 0 ]; then
 else
     echo "⚠ Warning: Docker repository setup failed, skipping..."
 fi
-
-# Install nvm version 0.40.3 (CRITICAL)
-echo ""
-echo "Installing nvm (Node Version Manager)..."
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to install nvm. Cannot continue."
-    exit 1
-fi
-source ~/.bashrc
-echo "✓ nvm installed successfully"
 
 # Install Powerline fonts (OPTIONAL)
 echo ""
@@ -192,3 +183,14 @@ echo "3. Add this public key to your Git hosting service (GitHub, GitLab, etc.)"
 echo ""
 echo "To display your public key, run:"
 echo "cat ~/.ssh/$SSH_KEY_NAME.pub"
+
+# Install nvm version 0.40.3 (CRITICAL)
+echo ""
+echo "Installing nvm (Node Version Manager)..."
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install nvm. Cannot continue."
+    exit 1
+fi
+source ~/.bashrc
+echo "✓ nvm installed successfully"
