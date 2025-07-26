@@ -88,8 +88,6 @@ echo "Installing zsh shell..."
 sudo apt install -y zsh 2>/dev/null
 if [ $? -eq 0 ]; then
     echo "✓ zsh installed successfully"
-    echo "Setting zsh as default shell..."
-    chsh -s $(which zsh) 2>/dev/null || echo "⚠ Warning: Could not set zsh as default shell"
 else
     echo "⚠ Warning: zsh installation failed, skipping..."
 fi
@@ -194,3 +192,6 @@ if [ $? -ne 0 ]; then
 fi
 source ~/.bashrc
 echo "✓ nvm installed successfully"
+
+echo "Setting zsh as default shell..."
+chsh -s $(which zsh) 2>/dev/null || echo "⚠ Warning: Could not set zsh as default shell"
