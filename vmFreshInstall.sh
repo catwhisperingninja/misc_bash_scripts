@@ -189,7 +189,6 @@ fi
 source ~/.bashrc
 echo "✓ nvm installed successfully"
 
-echo "Please manually run this command right now: export PATH="/home/<TYPE-YOUR-USERNAME-HERE>/.local/bin:$PATH" Type your username in the placeholder. You need to place quotes around the text after the = sign. Then Enter."
 cd ~
 export PATH="~/.local/bin:$PATH"
 echo "Let's see how that went..."
