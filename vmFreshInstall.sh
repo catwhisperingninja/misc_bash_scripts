@@ -100,10 +100,6 @@ if [ $? -ne 0 ]; then
     echo "ERROR: Failed to install Poetry. Cannot continue."
     exit 1
 fi
-# Try to set up poetry completions (optional part)
-mkdir -p ~/.zfunc 2>/dev/null
-poetry completions zsh > ~/.zfunc/_poetry 2>/dev/null || echo "⚠ Warning: Could not set up Poetry zsh completions"
-echo "✓ Poetry installed successfully"
 
 # Install Powerlevel10k (OPTIONAL)
 echo ""
@@ -193,5 +189,16 @@ fi
 source ~/.bashrc
 echo "✓ nvm installed successfully"
 
+echo "Please manually run this command right now: export PATH="/home/<TYPE-YOUR-USERNAME-HERE>/.local/bin:$PATH" Type your username in the placeholder. You need to place quotes around the text after the = sign. Then Enter."
+cd ~
+export PATH="~/.local/bin:$PATH"
+echo "Let's see how that went..."
+poetry --version
+echo "If you see a Poetry version and not an error, cool!"
+
+# Try to set up poetry completions (optional part)
+mkdir -p ~/.zfunc 2>/dev/null
+poetry completions zsh > ~/.zfunc/_poetry 2>/dev/null || echo "⚠ Warning: Could not set up Poetry zsh completions"
+
 echo "Setting zsh as default shell..."
-chsh -s $(which zsh) 2>/dev/null || echo "⚠ Warning: Could not set zsh as default shell"
+chsh -s $(which zsh)
