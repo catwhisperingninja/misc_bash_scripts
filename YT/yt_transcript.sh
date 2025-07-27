@@ -1,8 +1,9 @@
 #!/bin/bash
 
-# Uses fabric repo to create YouTube transcripts amongst other magic: https://github.com/danielmiessler/fabric
+# Generate a transcript from a YouTube video
+# Uses yt-dlp to download the video and then uses the transcript file to generate a transcript
 
-VideoURL="https://www.youtube.com/watch?v=FtnGiI9MGgA"
+VideoURL="https://youtu.be/oqUclC3gqKs"
 LANG="en"
 TranscriptFile="$(mktemp)"
 yt-dlp --quiet --no-warnings --write-auto-sub --sub-lang $LANG --skip-download --sub-format vtt -o "$TranscriptFile" "$VideoURL"
