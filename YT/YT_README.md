@@ -54,6 +54,10 @@ pip3 install yt-dlp
 
 3. **View the transcript** output directly in your terminal
 
+4. Or run this:
+
+yt-dlp --write-auto-subs --skip-download --sub-format srt --sub-langs en "https://youtu.be/GV30QpxZTzg?si=adg2Xf70-KeXfupI" && grep -v "^[0-9]*$" *.srt | grep -v "^[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" | grep -v "^$" > clean_transcript.txt
+
 ### Configuration
 
 The script has two main configuration variables at the top:
