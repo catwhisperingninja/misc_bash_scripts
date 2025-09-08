@@ -1,0 +1,83 @@
+workflows:
+  - name: "SSH: Generate key and install on remote"
+    description: "Generate an ed25519 SSH key, add it to the macOS keychain, copy the public key to the remote authorized_keys, and SSH in."
+    author: "Agent Mode"
+    tags: ["ssh", "setup", "security"]
+    arguments:
+      - name: key_filename
+        description: "File name for the private key under ~/.ssh"
+        default_value: "id_ed25519_this_mac"
+      - name: comment
+        description: "Key comment (e.g., email and date)"
+        default_value: "lauralopez@this-mac $(date +%Y-%m-%d)"
+      - name: remote_user
+        description: "Remote username"
+      - name: remote_host
+        description: "Remote hostname or IP"
+    command: |
+      ssh-keygen -t ed25519 -C "{{comment}}" -f ~/.ssh/{{key_filename}}
+      eval "$(ssh-agent -s)"
+      ssh-add --apple-use-keychain ~/.ssh/{{key_filename}}
+      cat ~/.ssh/{{key_filename}}.pub | ssh {{remote_user}}@{{remote_host}} 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+      ssh -i ~/.ssh/{{key_filename}} {{remote_user}}@{{remote_host}}
+
+  - name: "SSH: Install existing public key on remote"
+    description: "Push an existing ~/.ssh/<key>.pub to a remote's authorized_keys without generating a new key."
+    author: "Agent Mode"
+    tags: ["ssh", "setup"]
+    arguments:
+      - name: key_filename
+        description: "Existing private key filename under ~/.ssh (we'll use its .pub)"
+        default_value: "id_ed25519_this_mac"
+      - name: remote_user
+        description: "Remote username"
+      - name: remote_host
+        description: "Remote hostname or IP"
+    command: |
+      cat ~/.ssh/{{key_filename}}.pub | ssh {{remote_user}}@{{remote_host}} 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+
+  - name: "SSH: Add host config entry"
+    description: "Append a Host block to ~/.ssh/config for the generated key so the alias auto-uses the right identity."
+    author: "Agent Mode"
+    tags: ["ssh", "config"]
+    arguments:
+      - name: host_alias
+        description: "Alias to use in ssh config (e.g., prod-box)"
+      - name: remote_user
+        description: "Remote username"
+      - name: remote_host
+        description: "Remote hostname or IP"
+      - name: key_filename
+        description: "Private key filename under ~/.ssh"
+        default_value: "id_ed25519_this_mac"
+    command: |
+      printf "\nHost {{host_alias}}\n  HostName {{remote_host}}\n  User {{remote_user}}\n  IdentityFile ~/.ssh/{{key_filename}}\n  AddKeysToAgent yes\n  UseKeychain yes\n" >> ~/.ssh/config
+
+  - name: "SSH: Fix remote permissions"
+    description: "Fix common permission issues on the remote ~/.ssh directory and authorized_keys."
+    author: "Agent Mode"
+    tags: ["ssh", "troubleshooting"]
+    arguments:
+      - name: remote_user
+        description: "Remote username"
+      - name: remote_host
+        description: "Remote hostname or IP"
+    command: |
+      ssh {{remote_user}}@{{remote_host}} 'chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'
+
+  - name: "SSH: Generate RSA 4096 (legacy)"
+    description: "Generate a legacy RSA key if ed25519 is unsupported on the remote. Adds to keychain."
+    author: "Agent Mode"
+    tags: ["ssh", "legacy"]
+    arguments:
+      - name: key_filename
+        description: "Private key filename under ~/.ssh"
+        default_value: "id_rsa_this_mac"
+      - name: comment
+        description: "Key comment (e.g., email and date)"
+        default_value: "lauralopez@this-mac $(date +%Y-%m-%d)"
+    command: |
+      ssh-keygen -t rsa -b 4096 -C "{{comment}}" -f ~/.ssh/{{key_filename}}
+      eval "$(ssh-agent -s)"
+      ssh-add --apple-use-keychain ~/.ssh/{{key_filename}}
+

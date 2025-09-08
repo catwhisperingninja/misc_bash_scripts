@@ -1,0 +1,70 @@
+workflows:
+  - name: "SSH: Generate key and add to agent"
+    description: "Create ed25519 key and add it to macOS keychain"
+    tags: ["ssh"]
+    arguments:
+      - name: key_filename
+        description: "Private key filename under ~/.ssh"
+        default_value: "oldhash"
+      - name: comment
+        description: "Key comment (usually email or host note)"
+        default_value: "ed25519"
+    command: |
+      ssh-keygen -t ed25519 -f ~/.ssh/{{key_filename}} -C "{{comment}}" -N ""
+      eval "$(ssh-agent -s)"
+      if ssh-add --help 2>&1 | grep -q -- "--apple-use-keychain"; then
+        ssh-add --apple-use-keychain ~/.ssh/{{key_filename}}
+      else
+        ssh-add -K ~/.ssh/{{key_filename}}
+      fi
+
+  - name: "SSH: Push public key to remote"
+    description: "Append ~/.ssh/<key>.pub to remote authorized_keys"
+    tags: ["ssh"]
+    arguments:
+      - name: key_filename
+        description: "Private key filename under ~/.ssh (we'll use its .pub)"
+        default_value: "oldhash"
+      - name: remote_user
+        description: "Remote username"
+        default_value: "dev"
+      - name: remote_host
+        description: "Remote hostname or IP"
+        default_value: "192.168.0.10"
+    command: |
+      cat ~/.ssh/{{key_filename}}.pub | ssh {{remote_user}}@{{remote_host}} 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
+
+  - name: "SSH: Add host config entry"
+    description: "Append a Host block to ~/.ssh/config"
+    tags: ["ssh", "config"]
+    arguments:
+      - name: host_alias
+        description: "Alias to use in ssh config (e.g., parallels)"
+        default_value: "osx_parallels"
+      - name: remote_user
+        description: "Remote username"
+        default_value: "dev"
+      - name: remote_host
+        description: "Remote hostname or IP"
+        default_value: "192.168.60.81"
+      - name: key_filename
+        description: "Private key filename under ~/.ssh"
+        default_value: "oldhash"
+    command: |
+      mkdir -p ~/.ssh
+      chmod 700 ~/.ssh
+      printf "\nHost {{host_alias}}\n  HostName {{remote_host}}\n  User {{remote_user}}\n  IdentityFile ~/.ssh/{{key_filename}}\n  AddKeysToAgent yes\n  UseKeynoin yes\n  IdentitiesOnly yes\n" >> ~/.ssh/config
+      chmod 600 ~/.ssh/config
+
+  - name: "SSH: Fix remote permissions"
+    description: "Fix remote ~/.ssh and authorized_keys perms"
+    tags: ["ssh", "troubleshooting"]
+    arguments:
+      - name: remote_user
+        description: "Remote username"
+        default_value: "dev"
+      - name: remote_host
+        description: "Remote hostname or IP"
+        default_value: "192.168.0.10"
+    command: |
+      ssh {{remote_user}}@{{remote_host}} 'chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys'
