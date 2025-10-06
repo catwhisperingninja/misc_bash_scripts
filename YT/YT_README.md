@@ -65,23 +65,8 @@ The script has two main configuration variables at the top:
 ```bash
 VideoURL="https://www.youtube.com/watch?v=FtnGiI9MGgA"  # Change this to your target video
 LANG="en"                                               # Language code for subtitles
-```
-
-#### Supported Languages
-Common language codes include:
-- `en` - English
-- `es` - Spanish  
-- `fr` - French
-- `de` - German
-- `it` - Italian
-- `pt` - Portuguese
-- `ru` - Russian
-- `ja` - Japanese
-- `ko` - Korean
-- `zh` - Chinese
-
-*Note: Not all videos have subtitles in all languages. The script will fail if the requested language isn't available.*
-
+p
+\\
 ## Output Format
 
 The script outputs transcripts in **VTT (WebVTT)** format, which includes:

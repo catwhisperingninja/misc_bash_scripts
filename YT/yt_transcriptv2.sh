@@ -14,6 +14,10 @@ if [ -z "$video_id" ]; then
     # Try youtu.be format
     video_id=$(echo "$url" | sed -n 's|.*youtu.be/\([^?]*\).*|\1|p' | head -c 11)
 fi
+if [ -z "$video_id" ]; then
+    # Try live URL format
+    video_id=$(echo "$url" | sed -n 's|.*live/\([^?]*\).*|\1|p' | head -c 11)
+fi
 
 if [ -z "$video_id" ]; then
     echo "Error: Could not extract video ID from URL"
