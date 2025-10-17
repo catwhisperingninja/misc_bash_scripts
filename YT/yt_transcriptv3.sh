@@ -76,3 +76,35 @@ awk 'BEGIN{RS=""; FS="\n"}
 }' "$subtitle_file" > clean_transcript.txt
 
 echo "Clean transcript saved to clean_transcript.txt"
+
+# Derive a hyphenated title and finalize file naming, then prepend metadata
+title=$(yt-dlp --skip-download --get-title "$url" 2>/dev/null | head -n 1)
+if [ -z "$title" ]; then
+    title="$video_id"
+fi
+
+# Build a safe hyphenated slug
+slug=$(printf '%s' "$title" | sed -E 's/[[:space:]]+/-/g; s/[^A-Za-z0-9._-]+//g; s/-{2,}/-/g; s/^-+|-+$//g')
+if [ -z "$slug" ]; then
+    slug="$video_id"
+fi
+
+dest="${slug}.txt"
+if [ -e "$dest" ]; then
+    n=1
+    while [ -e "${slug}-${n}.txt" ]; do
+        n=$((n+1))
+    done
+    dest="${slug}-${n}.txt"
+fi
+
+tmpfile=$(mktemp)
+{
+    printf 'URL: %s\n' "$url"
+    printf 'Title: %s\n' "$slug"
+    cat clean_transcript.txt
+} > "$tmpfile"
+
+mv "$tmpfile" "$dest"
+rm -f clean_transcript.txt
+echo "Final transcript saved to $dest"
