@@ -11,6 +11,12 @@ sudo apt install -y kleopatra
 sudo apt install -y keepassxc
 sudo apt install -y testdisk
 sudo apt install -y net-tools
+sudo apt install -y dos2unix
+
+# install hopper
+wget "https://d2ap6ypl1xbe4k.cloudfront.net/Hopper-v4-4.3.14-Linux.deb"
+sudo apt install ./Hopper-v4-4.3.14-Linux.deb
+
 # install fastfetch
 sudo add-apt-repository -y ppa:zhangsongcui3371/fastfetch
 sudo apt install -y fastfetch
