@@ -1,0 +1,735 @@
+URL: https://youtu.be/JdJE6_OU3YA?si=jP8W8CtfJiE5sytq
+Title: AIs-Memory-Wall-Why-Compute-Grew-60000x-But-Memory-Only-100x-PLUS-My-8-Principles-to-Fix
+00:00:00.160 Memory is perhaps the biggest unsolved
+00:00:03.360 problem in AI and it is one of the only
+00:00:05.920 problems in AI that is getting worse,
+00:00:07.919 not better. As we get better and better
+00:00:10.639 and better at intelligence, we get worse
+00:00:13.519 at memory, relatively speaking. In fact,
+00:00:16.000 there's a name for it in the model maker
+00:00:18.000 community. It's called the memory wall.
+00:00:20.080 We are not improving the hardware chip
+00:00:22.720 capabilities of our memory systems
+00:00:25.279 nearly as fast as we are improving the
+00:00:28.320 ability of those chips to infer or
+00:00:30.800 compute words or do LLM inference. That
+00:00:33.760 generates a growing gap between our
+00:00:36.160 intelligence capabilities and our memory
+00:00:38.079 capabilities. Don't worry, we won't stay
+00:00:40.079 at the hardware level for long. I want
+00:00:42.079 to go through with you the core issues
+00:00:44.719 that we see as builders, as users of AI,
+00:00:47.840 as designers of AI systems. What is the
+00:00:51.360 root of the memory problems we
+00:00:52.879 experience? If we're at a systems design
+00:00:55.199 level, if we're at a usage level, if if
+00:00:57.600 we are even using Chad JPT, why are
+00:01:00.879 memory problems so sticky and hard to
+00:01:03.520 untangle? Why have we not seen better
+00:01:07.439 solutions in the market? I think there
+00:01:09.280 are good reasons for that. And then once
+00:01:11.840 we go through those root causes, how can
+00:01:14.080 we start to think about solving them?
+00:01:15.840 How can we think about solving them as
+00:01:17.520 users? How can we think about solving
+00:01:19.520 them as builders? So, I'm going to go
+00:01:21.360 through five root causes and then we're
+00:01:23.119 going to flip the script and I'm going
+00:01:24.560 to go through eight principles for
+00:01:26.479 building a solution because I want you
+00:01:28.159 to walk away from this and I want you to
+00:01:30.000 feel empowered to actually design better
+00:01:33.280 memory systems. I don't want you to wait
+00:01:35.040 around for someone in Silicon Valley to
+00:01:36.799 make a pitch and get funded for this.
+00:01:38.720 You can design your own solution here.
+00:01:40.960 So the key thing to keep in mind through
+00:01:43.200 this whole conversation is that AI
+00:01:45.520 systems are stateless by design but
+00:01:49.280 useful intelligence requires state. So
+00:01:51.759 every conversation is stateless meaning
+00:01:53.920 it starts from zero. The model has
+00:01:56.799 parametric knowledge which the weights
+00:01:58.640 we talk about in a model right but it
+00:02:00.719 doesn't have episodic memory. It does
+00:02:02.719 not remember what happened to you. And
+00:02:04.960 I'm sorry, but the 10 or 11 sentences or
+00:02:07.920 the the very lossy memory that chat GPT
+00:02:11.120 has right now or the ability to search
+00:02:13.120 conversations that Claude has right now
+00:02:15.120 is not good enough for that. You have to
+00:02:18.160 reconstruct your context every single
+00:02:21.200 time. This is not a bug actually. It is
+00:02:23.599 an intentional architecture. It is a
+00:02:25.680 design for statelessness because the
+00:02:28.800 model makers want the model to be
+00:02:31.440 maximally useful at solving the next
+00:02:34.400 problem, the problem in front of you.
+00:02:36.239 And they cannot presume that state
+00:02:39.360 matters. It doesn't always matter. So
+00:02:41.440 the promise of memory features is that
+00:02:43.440 vendors are going to be able to
+00:02:44.640 magically solve this by making the
+00:02:46.319 system stateful in ways that are useful
+00:02:48.720 to you. But this creates a whole host of
+00:02:50.800 new problems because statefulness is not
+00:02:53.440 the same for all of us. What should it
+00:02:55.440 remember? Is it passive accumulation? Is
+00:02:57.920 it active curation? How long should it
+00:03:00.800 remember? Is it persistent forever? Is
+00:03:03.680 it stale ever? Does it drop off after 30
+00:03:07.440 days? When do you retrieve it? Do you
+00:03:09.680 retrieve it when it's relevant, sort of
+00:03:12.080 like claude does? Do you retrieve it all
+00:03:14.239 the time and potentially it's noisy in
+00:03:15.920 the context window? How do you update
+00:03:17.599 it? This is one of the biggest problems
+00:03:19.360 with LLMs. People tell me they'll put
+00:03:21.120 their wiki into a retrieval augmented
+00:03:23.280 generation system and I'm like, when was
+00:03:25.280 the last time you updated your wiki? If
+00:03:27.440 it's not updated, how do you overwrite
+00:03:29.120 it? How do you append data to it? How do
+00:03:31.120 you change data? These are not
+00:03:34.159 implementation details. They are
+00:03:36.400 fundamental questions about what memory
+00:03:38.959 is and its purpose when we do work.
+00:03:42.480 Memory matters because we humans are
+00:03:45.280 able to quickly and fluidly negotiate
+00:03:48.319 between stateless brainstorming things
+00:03:51.200 that are like wild and we don't need to
+00:03:53.200 use a lot of our past memory and very
+00:03:55.599 stateful work. LLMs are not good at
+00:03:58.159 that. Loading that context is very very
+00:04:00.640 hard right now. So why is this so
+00:04:02.480 persistent? We've talked a little bit
+00:04:04.239 about how the promise is hard to
+00:04:06.000 fulfill, but what are some of the root
+00:04:08.159 causes that make it hard for vendors to
+00:04:10.879 do this? Number one, the relevance
+00:04:13.599 problem is one of the gnarliest unsolved
+00:04:16.959 problems out there. What's relevant
+00:04:19.359 actually changes based on the task that
+00:04:21.759 you're doing. Are you planning? Are you
+00:04:23.280 executing? The phase of your work. Are
+00:04:25.199 you just exploring? Are you refining
+00:04:27.040 your work? The scope you're in, right?
+00:04:29.040 Is it a personal or is it a project? I
+00:04:31.520 know someone who is in the healthcare
+00:04:33.600 industry. And they have to be very
+00:04:35.440 careful because if they were to ever ask
+00:04:37.520 for health advice then the memory
+00:04:40.080 retrieval within Chad GBT would pull up
+00:04:42.080 work stuff and they are afraid in the
+00:04:44.240 same context if they pull up a work
+00:04:45.919 thing that their personal health data
+00:04:47.680 will leak in because it will all look
+00:04:49.360 like health data. So the scope matters.
+00:04:51.840 What has changed since the last time you
+00:04:54.639 talked? The state delta is what we would
+00:04:56.639 call that. If you come back and you say
+00:04:58.720 this is a new version, does it really
+00:05:00.320 understand that's a new version or not?
+00:05:02.160 Semantic similarity which is what a
+00:05:04.080 retrieval augmented generation depends
+00:05:05.919 on is just a proxy. It is a proxy for
+00:05:10.240 relevance. It is not a true solution.
+00:05:13.600 Finding similar documents works until
+00:05:16.320 you need to find the document where we
+00:05:19.199 decided X and that's very specific. Or
+00:05:21.280 ignore everything about client A right
+00:05:23.440 now but pay attention to clients B, C,
+00:05:25.440 and D. Or please only pay attention to
+00:05:28.320 what we've decided since October 12th.
+00:05:30.479 These are all things that we humans can
+00:05:32.639 understand and execute on when we go and
+00:05:35.039 manually retrieve information. But the
+00:05:37.199 AI using semantic search, it's just not
+00:05:40.000 the right tool for that job. There's no
+00:05:41.680 general algorithm for relevance. There's
+00:05:44.080 no magic relevance solve that the AI can
+00:05:47.280 depend on. You need to use human
+00:05:49.280 judgment about task context. And that
+00:05:51.680 means requiring very complicated
+00:05:53.680 architectures to accomplish a specific
+00:05:55.919 memory task, not just better embeddings
+00:05:59.039 in a rag memory system. And that, by the
+00:06:01.919 way, is one of the big reasons why these
+00:06:03.759 like one-stop shop vendors often
+00:06:06.160 struggle with real implementations.
+00:06:08.240 Number two, the persistence precision
+00:06:11.039 trade-off is a massive issue with memory
+00:06:13.840 systems. If you store everything,
+00:06:15.680 retrieval becomes very noisy and it
+00:06:17.840 becomes very expensive. You jam up your
+00:06:19.600 context window. If you store
+00:06:21.680 selectively, you're going to lose
+00:06:23.759 information that you need later. If you
+00:06:26.080 let the system decide what to keep, it
+00:06:28.400 optimizes often for something that you
+00:06:30.400 didn't ask it to. Maybe it optimizes for
+00:06:32.319 recency. Maybe it optimizes for
+00:06:33.840 frequency. Maybe it optimize for
+00:06:35.759 statistical saliency versus actual
+00:06:38.080 importance. And if you wonder what
+00:06:39.759 statistical salency is, have you ever
+00:06:42.160 tried having an argument with Chad GPT
+00:06:44.560 or Claude or Gemini about the fact that
+00:06:46.639 it's emphasizing the wrong thing in
+00:06:48.960 something it's writing? That is salency.
+00:06:51.120 That's a salency defect. Human memory is
+00:06:54.160 actually, funnily enough, very good at
+00:06:56.000 this through the technology of
+00:06:58.000 forgetting. We use incredibly lossy
+00:07:00.800 compression with emotional and
+00:07:02.960 importance waiting. And so we've
+00:07:04.720 actually done studies on human memory.
+00:07:06.400 And it turns out that you can with
+00:07:09.680 practice get better and better and
+00:07:12.000 better at recalling specific things. But
+00:07:14.960 if you choose not to recall something
+00:07:17.039 that happened to you, you're just going
+00:07:19.120 to lose it. And what's interesting is it
+00:07:21.520 seems to be a database keys issue for
+00:07:23.680 us. I realize I am like some someone in
+00:07:25.840 the comments is going to be a
+00:07:26.880 neuroscientist and just rightly take me
+00:07:28.560 to town. But my understanding of the
+00:07:29.840 reading is that you have to be able to
+00:07:33.520 remember the equivalent of a database
+00:07:35.759 key to retrieve the memory. And if you
+00:07:37.599 can do that, the memory becomes
+00:07:39.199 accessible again. But your short-term
+00:07:41.919 memory, so to speak, in humans is very
+00:07:43.599 lossy. And so you lose the database keys
+00:07:45.840 if you can't persist them with intent.
+00:07:48.400 if you don't intend to remember them.
+00:07:50.240 And that is why fundamentally your
+00:07:52.479 childhood memories can be very
+00:07:53.919 accessible. But what happened last
+00:07:55.680 Thursday? You're sitting there and
+00:07:57.120 you're like, did we eat out or did we
+00:07:58.639 not eat out? Which which day did we go
+00:08:00.400 to the movies? Right? It's not because
+00:08:02.960 you have a profound issue with memory.
+00:08:05.120 It's because your brain is desperately
+00:08:07.199 compressing information to make it
+00:08:09.039 useful to you and has dumped out those
+00:08:10.800 database keys. And when you go to the
+00:08:12.960 effort of remembering, you're literally
+00:08:14.319 retrieving the database keys to get the
+00:08:15.840 memory back. Forgetting is a useful
+00:08:17.759 technology for us. That's the point of
+00:08:19.280 that. AI systems don't have any of that.
+00:08:21.680 They either accumulate or they purge,
+00:08:24.240 but they do not decay. And what I'm
+00:08:26.879 talking about when I'm like, did I go to
+00:08:28.319 the movie? Oh, yeah. It was the movie.
+00:08:29.919 Who was that character? Oh, now I have
+00:08:31.919 I'm recovering the key and I'm able to
+00:08:34.320 get it back. The memory has decayed into
+00:08:37.760 a lossy approximation in the memory key,
+00:08:40.640 but I can recover it if I put effort
+00:08:42.959 into it. We have nothing like that in
+00:08:45.040 AI. That is a uniquely human technology
+00:08:48.080 and it's funny but we have to think
+00:08:49.760 about forgetting as a technology when we
+00:08:51.600 talk about memory. Number three, the
+00:08:53.519 single context window assumption.
+00:08:55.519 Vendors often try to solve memory by
+00:08:57.920 making context windows bigger. But
+00:09:01.040 volume is not the issue. The structure
+00:09:03.040 is the problem. A million token context
+00:09:05.360 window is not a usable million token
+00:09:08.240 context window if it's full of unsorted
+00:09:10.560 context. That is worse than a tightly
+00:09:13.839 curated 10,000 time. The model has to
+00:09:17.040 still find what matters, parse the
+00:09:19.600 relevance, ignore the noise. You have
+00:09:21.839 not solved the problem by expanding the
+00:09:24.880 context window. You have simply made
+00:09:26.800 your problem more expensive. Sometimes
+00:09:29.680 substantially more expensive. I know
+00:09:31.680 people who make calls and they don't
+00:09:33.680 budget the calls and they're like, "Why
+00:09:35.600 is my API bill high?" I'm like, your API
+00:09:38.240 bill is high cuz you're stuffing the
+00:09:39.680 context window and you're just kind of
+00:09:41.200 trying to throw queries against it. It
+00:09:42.959 does not work well and it also is very
+00:09:44.560 expensive. The real solution requires
+00:09:47.200 multiple context streams with different
+00:09:49.760 life cycles and retrieval patterns. It
+00:09:51.839 is hard. You have to design it. It
+00:09:54.000 breaks the mental model of just talk to
+00:09:55.839 the AI. That is why there is no
+00:09:57.600 one-sizefits-all solution. Issue number
+00:09:59.839 four is the portability problem. Every
+00:10:02.080 single vendor builds proprietary memory
+00:10:04.720 layers because they think in their pitch
+00:10:06.240 deck that memory is a moat. I get it. It
+00:10:09.040 makes sense on a pitch deck. Chat GPT
+00:10:11.279 memory cla recall cursor memory banks.
+00:10:14.880 These are not inherently interoperable.
+00:10:17.440 Users will invest time building up
+00:10:19.440 memory in a given system. And the model
+00:10:22.240 makers like that because it makes the
+00:10:23.680 switching cost real and you can't port
+00:10:26.079 what chat GPT knows about me to claude
+00:10:28.240 and your memory is locked in and so on.
+00:10:29.760 The problem here is a problem of the
+00:10:31.839 commons. This behavior set from vendors
+00:10:34.560 and model makers and tool builders
+00:10:36.480 encourages users to leave memory to the
+00:10:40.399 tool rather than encouraging them to
+00:10:42.880 build a proper context library. And I
+00:10:44.959 get it from a product design perspective
+00:10:46.800 because like how many users are going to
+00:10:48.640 really build a product context library?
+00:10:50.959 But if we reframe it and we say
+00:10:53.440 portability is a first class problem,
+00:10:56.079 users should be inherently able to be
+00:10:59.200 multimodel. I think that's more
+00:11:01.200 relevant. And maybe from a consumer
+00:11:02.959 standpoint, you don't care because you
+00:11:05.040 have 800 million users in chat GPT. It
+00:11:07.279 dwarfs everything else, etc. One, that's
+00:11:09.360 not entirely true because Gemini has I
+00:11:11.200 think uh closing in on half a million or
+00:11:13.200 half a billion now. But the other reason
+00:11:15.760 is that from a business perspective, you
+00:11:17.680 have to be multimodel. It is it is a
+00:11:19.600 liability to be single model. And so if
+00:11:22.079 you're building business memory systems,
+00:11:24.000 you must solve the portability problem.
+00:11:26.480 And the issue is any given vendor is not
+00:11:29.760 incentivized to make that truly portable
+00:11:31.839 either. They want to make that
+00:11:33.040 proprietary to them. And then you have
+00:11:35.120 the same bottleneck, but now you're on a
+00:11:37.200 vendor who may not be as well funded as
+00:11:39.279 the model maker. And so it becomes a
+00:11:40.720 house of cards. Number five, the passive
+00:11:43.440 accumulation fallacy. Most memory
+00:11:45.760 features assume you just use your AI
+00:11:47.760 normally and it will figure out what to
+00:11:49.440 remember. That is the default mental
+00:11:51.200 model of users. And so that's the
+00:11:52.640 assumption that memory features build
+00:11:54.160 around. But this fails because the
+00:11:56.160 system cannot distinguish a preference
+00:11:58.480 from a fact. It cannot easily tell
+00:12:01.040 project specific from evergreen context.
+00:12:03.279 I've often seen that mixed up. It
+00:12:05.279 doesn't automatically know when old
+00:12:06.959 information is stale. If you've ever
+00:12:08.800 wondered why chat GPT or Claude or
+00:12:11.279 Perplexity comes back and talks about
+00:12:13.839 old AI models as if they are active
+00:12:15.760 today, that is the same issue. They
+00:12:17.440 can't tell when old information is stale
+00:12:20.000 and it optimizes for continuity. It does
+00:12:22.320 not optimize for correctness. This is
+00:12:24.000 the keep the conversation going issue.
+00:12:25.920 Useful memory fundamentally requires
+00:12:29.200 active curation. You have to decide what
+00:12:31.760 to keep, what to update, and what to
+00:12:33.680 discard. And that is work. And so
+00:12:35.440 vendors promise passive solutions
+00:12:37.760 because active curation they are told
+00:12:40.560 does not scale as a product. I think we
+00:12:43.040 have to start by framing that problem
+00:12:44.959 better because it turns out passive
+00:12:47.279 accumulation doesn't solve for it
+00:12:48.880 either. And this is still a big enough
+00:12:51.040 problem that it costs us billions of
+00:12:53.519 dollars at the enterprise level and it's
+00:12:55.360 extremely frustrating for users both
+00:12:57.200 personally and professionally. The
+00:12:58.959 answer cannot be there is no answer or
+00:13:01.200 we'll fake the answer. Finally, number
+00:13:03.440 six on the root cause side, then we're
+00:13:05.279 going to get to solve. It'll it'll feel
+00:13:06.720 better. Memory is actually multiple
+00:13:09.279 problems. And that's part of why it's so
+00:13:11.120 hard. I hope you're getting that idea,
+00:13:12.720 right? When people say AI memory, what
+00:13:14.720 they really mean is any number of
+00:13:17.200 preferences, how I like things done.
+00:13:19.600 That could be a key value that's
+00:13:20.880 persistent. They could mean facts.
+00:13:22.720 What's true about particular things or
+00:13:24.399 entities that can be structured, it
+00:13:26.000 might need updates. They might mean
+00:13:27.680 knowledge, right? Domain expertise. And
+00:13:29.839 that can be parametric, right? that can
+00:13:31.440 be embedded in weights but it might not
+00:13:33.519 be right and then what do you do? It can
+00:13:35.279 be episodic. So it could be
+00:13:37.120 conversational, temporal, ephemeral
+00:13:39.120 knowledge. It can also be procedural.
+00:13:41.279 Have we solved this before? Right? If
+00:13:43.440 episodic memory is what we've discussed
+00:13:45.360 in the past, procedural memory is how we
+00:13:47.360 solve this problem in the past. And
+00:13:48.800 those are also different things. And so
+00:13:50.880 you have exemplars there, you have
+00:13:52.480 successes and fails in procedural
+00:13:54.639 memory. Every single memory type needs
+00:13:57.440 different system design to handle
+00:13:59.600 storage retrieval and update patterns.
+00:14:01.040 And if you feel like you're getting a
+00:14:02.079 headache here, you're not alone. This is
+00:14:04.000 why we don't have a good solve. And this
+00:14:06.000 is why I want to lay out in the next
+00:14:07.680 section principles for solve. But it
+00:14:09.920 starts with being honest about the
+00:14:11.040 problem. Treating this problem as one
+00:14:12.880 problem guarantees you are going to
+00:14:15.279 solve none of the real problems well.
+00:14:17.839 And that is why we have memory as a
+00:14:19.839 persistent issue. in fact a growingly
+00:14:22.079 worse issue in the AI community. Vendors
+00:14:25.279 fundamentally are treating this as a
+00:14:27.600 solve for infrastructure and not a sol
+00:14:29.920 for architecture. And so bigger windows
+00:14:32.240 and better embeddings and cross chat
+00:14:34.000 search scale, but they don't solve
+00:14:36.480 structurally. And users keep expecting
+00:14:38.880 passive solutions because they're
+00:14:40.639 frankly sold passive solutions. There's
+00:14:42.480 an expectations issue here. Just
+00:14:44.959 remember what matters is not something
+00:14:48.000 that you can expect to work. But we're
+00:14:50.079 told that it will work. So if memory
+00:14:52.000 requires architecture and users want
+00:14:54.000 magic, the gap between what's promised,
+00:14:56.399 what's delivered, and what's needed has
+00:14:58.320 never been bigger. We have a memory wall
+00:15:00.320 of our own beyond the chip level in how
+00:15:02.480 we design our systems. And it won't get
+00:15:04.639 solved if we solve the wrong. So let's
+00:15:06.480 say you've gone through all of this and
+00:15:08.079 you want to solve memory correctly. I am
+00:15:11.360 going to give you principles that work
+00:15:14.160 whether you are using the chat and a
+00:15:17.360 sort of power user at home and you want
+00:15:19.839 to build something yourself because this
+00:15:21.600 absolutely works for that or whether you
+00:15:23.839 are designing larger systems because it
+00:15:25.839 turns out that the principles for memory
+00:15:28.000 are fractal because the problem is
+00:15:30.480 fractal. We have the same kinds of
+00:15:33.120 memory issues when we are power users
+00:15:35.920 individually in a chat as we do when we
+00:15:37.839 are designing agentic systems. So the
+00:15:40.000 principles that work. Number one,
+00:15:41.680 there's going to be eight of these.
+00:15:42.880 Settle in. It's going to be fun. Memory
+00:15:45.279 is an architecture. Memory is an
+00:15:47.519 architecture. It is not a feature. You
+00:15:49.040 cannot wait for vendors to solve this. I
+00:15:50.720 think you get this idea. We won't spend
+00:15:52.160 too long here. Every tool will have
+00:15:54.720 memory capabilities, but if you leave it
+00:15:56.720 to tools, they will solve different
+00:15:58.399 slices. You need principles that work
+00:16:00.639 across all of them. And you need to
+00:16:02.639 architect memory as a standalone that
+00:16:05.360 works across your whole tool set.
+00:16:07.040 Principle two, you should separate by
+00:16:10.240 life cycle, not by convenience. So as an
+00:16:15.040 example, you need to separate personal
+00:16:17.680 preferences which can be permanent from
+00:16:19.759 project facts which can be temporary and
+00:16:22.079 those should be separated from session
+00:16:24.000 state which can be ephemeral or
+00:16:25.839 conversation state. Mixing different
+00:16:29.360 life cycle states mixing permanent with
+00:16:31.440 temporary with ephemeral it just breaks
+00:16:33.519 memory. The discipline lies in keeping
+00:16:35.839 these apart cleanly. And again, this
+00:16:39.279 works if you're in chat. It works if
+00:16:41.440 you're designing a gentic systems. If
+00:16:43.680 you have a permanent personal
+00:16:44.959 preference, it is possible. It is as
+00:16:46.880 simple as a very disciplined system chat
+00:16:50.000 update where you go into the sort of
+00:16:52.079 system rules and the system prompt for
+00:16:53.759 chat GPT and you say, "This is what you
+00:16:56.079 need to know about me. These are my
+00:16:57.440 personal preferences." And model makers
+00:16:58.880 are starting to make that more exposed
+00:17:00.480 because they want that. But they don't
+00:17:02.000 tell you how to use that properly. And
+00:17:04.160 when I observe how people actually use
+00:17:06.240 that tell me about yourself, it is
+00:17:08.319 absolutely a mix of personal preferences
+00:17:10.880 and ephemeral stuff and project facts
+00:17:13.120 because no one has taught them to use it
+00:17:14.640 better. And if you're designing agentic
+00:17:16.160 systems, it gets more complex, but it's
+00:17:17.760 the same separation of concerns. You
+00:17:19.919 have to separate out what are the
+00:17:21.679 permanent facts in the situation here.
+00:17:23.919 What are project specific facts and what
+00:17:25.600 is session state. Principle number
+00:17:27.360 three, you need to match storage to
+00:17:30.240 query pattern. So that means you're
+00:17:32.160 going to need multiple stores because
+00:17:33.600 different questions require different
+00:17:34.880 retrieval. Now in the chat situation
+00:17:36.640 that I gave you, chat GPT can retrieve
+00:17:40.559 the memory if it's a system prompt kind
+00:17:43.280 of a thing and it just calls it into the
+00:17:45.760 context window and it's super simple and
+00:17:47.520 you'd never think of it as memory for
+00:17:49.440 most people but that's what it is. If
+00:17:51.200 you're designing an agentic system, it
+00:17:53.360 is understanding the difference between,
+00:17:56.480 for example, what is my style, which
+00:17:59.280 could be a key value because it's a
+00:18:01.039 written style of some sort. What is the
+00:18:03.200 client ID, which should be structured
+00:18:05.120 data or relational data, what similar
+00:18:07.919 work have we done, which could be
+00:18:09.120 semantic or vector storage data, and
+00:18:11.440 what did we do last time, which should
+00:18:13.120 be event logs. Those are four different
+00:18:15.360 types of data, right? You have key value
+00:18:16.720 data, structured data, semantic data,
+00:18:18.480 event logs. Trying to do all of these in
+00:18:20.880 one storage pattern is going to fail.
+00:18:23.200 And that is why when people say, "We
+00:18:24.480 have our data lake and it's going to be
+00:18:25.679 a rag." I'm like, why? Why is it going
+00:18:28.080 to be a rag? Have you heard the word rag
+00:18:30.559 repeated a hundred times like a magic
+00:18:32.400 spell for memory? It does not work that
+00:18:34.320 way. You need to match storage to the
+00:18:36.559 query pattern. Otherwise, you just have
+00:18:38.320 a very expensive data dump. Principle
+00:18:40.880 number four, mode aare context beats
+00:18:43.919 volume hands down. And so more context
+00:18:47.200 is not better context. Planning
+00:18:49.600 conversations need breadth like they
+00:18:52.240 need to have space for alternatives.
+00:18:53.919 They need to have space for comparables.
+00:18:55.360 Brainstorming conversations are similar
+00:18:57.039 to planning conversations. You need to
+00:18:58.640 be able to range. Execution
+00:19:00.720 conversations. Execution workflows in
+00:19:03.280 agentic situations. They need precision.
+00:19:05.760 They need precise constraints. Retrieval
+00:19:08.559 strategy needs to match your task type.
+00:19:13.840 You cannot just sit there and think to
+00:19:16.320 yourself, okay, I'm going to have a
+00:19:17.760 brainstorming conversation and it's
+00:19:19.679 going to be incredibly precise and just
+00:19:21.360 hope that it works. This is why I talk
+00:19:23.440 about prompting so much. Effectively,
+00:19:25.039 what prompting is doing? It is giving
+00:19:27.840 context that is mode aare to an AI so
+00:19:32.240 that it can be in the right mode. And
+00:19:33.679 that's super effective for chat users.
+00:19:35.360 But guess what? If you're designing
+00:19:36.640 agentic systems, it is your
+00:19:38.480 responsibility to architect mode
+00:19:40.480 awareness into the system so that it is
+00:19:42.799 aware that this is an execution
+00:19:45.039 environment and that precision matters
+00:19:46.960 and that it is audited and eval on
+00:19:48.880 precision. Principle number five, you
+00:19:50.960 need to build portable as a first class
+00:19:53.520 object. You need to build portable and
+00:19:55.200 not platform dependent. Your memory
+00:19:57.919 layer needs to survive vendor changes.
+00:19:59.679 It needs to survive tool changes. It
+00:20:01.360 needs to survive model changes. If chat
+00:20:03.600 GPT changes their pricing, if Claude
+00:20:05.760 adds a feature, your context library
+00:20:08.720 should be retrievable regardless. And
+00:20:11.919 that is something that almost nobody can
+00:20:13.840 say right now. And the people who are
+00:20:15.760 doing it tend to be designing very large
+00:20:17.919 scale agentic AI systems at the
+00:20:19.919 enterprise level. But this is a lesson
+00:20:22.480 that we all need to take with us. I
+00:20:24.720 think it is a best practice. It is sort
+00:20:26.400 of like keeping a go bag next to the
+00:20:29.919 door in case you need to get out in case
+00:20:31.760 of I don't know something happens to
+00:20:33.200 your house. You need to have something
+00:20:34.880 that is portable that carries relevant
+00:20:38.400 memory that you can use to have
+00:20:40.640 productive conversations with another
+00:20:42.320 AI. I fully admit there is not an
+00:20:44.640 outof-box solution for this. There are
+00:20:46.400 people who are power users who configure
+00:20:49.280 obsidian to do this right as a
+00:20:51.120 note-taking app and they tie it into AI
+00:20:53.360 and it becomes a portable platform
+00:20:55.679 independent way of handling this. There
+00:20:57.520 are people who use notion for this. The
+00:20:59.840 thing that is a common trait is that
+00:21:01.919 they are obsessed with making sure the
+00:21:03.840 memor is configured correctly for them
+00:21:06.720 and the AI has to come in and be queried
+00:21:09.760 correctly or called correctly to engage
+00:21:11.760 with a piece of the memory that matters.
+00:21:13.600 Whether that is a key value piece like
+00:21:15.760 what's my style or a semantic search
+00:21:18.159 like what similar work have we done
+00:21:19.679 together. A good data structure accounts
+00:21:23.440 for that. Principle number six
+00:21:25.440 compression is curation. Do not upload
+00:21:29.120 40 pages hoping the AI extracts what
+00:21:31.440 matters. I see people do this when they
+00:21:33.360 overload the context window and they ask
+00:21:35.280 for an analysis of a report. You need to
+00:21:37.520 do the compression work. You need to
+00:21:39.760 either in a separate LM call or in your
+00:21:42.159 own work, write the brief, identify the
+00:21:44.480 key facts that matter and state the
+00:21:46.159 constraints. This is where judgment
+00:21:48.159 lives. And if you don't delegate it, you
+00:21:51.840 will be happier with the precision and
+00:21:54.000 context awareness of the response.
+00:21:56.080 Memory is bound up in how we humans
+00:21:58.240 touch the work. There are ways to use AI
+00:22:01.600 to amplify and expand your judgment. You
+00:22:03.840 can use a precise prompt to extract
+00:22:07.360 information in a structured way from 40
+00:22:09.280 pages of data and then in a separate
+00:22:11.440 sort of piece of work figure out what to
+00:22:13.600 do with that data. But it remains on you
+00:22:17.360 to make sure that the facts are correct,
+00:22:19.600 that the constraints are real, and that
+00:22:21.520 the precision work you're asking AI to
+00:22:23.360 do with that data is the correct
+00:22:25.520 precision work. The judgment in
+00:22:28.080 compression is human judgment. It may be
+00:22:30.640 human judgment that you amplify with AI,
+00:22:32.880 but it remains human judgment. Principle
+00:22:35.919 number seven, retrieval needs
+00:22:39.280 verification. So semantic search will
+00:22:42.799 recall well but fail on specifics,
+00:22:45.200 right? It will recall topics and themes.
+00:22:47.440 Well, you need to pair fuzzy retrieval
+00:22:50.559 techniques like rag search with exact
+00:22:53.200 verification where facts must be
+00:22:55.120 correct. You should have a two-stage
+00:22:57.520 retrieval call path, right? Recall
+00:22:59.280 candidates and then verify against some
+00:23:01.039 kind of ground truth. This is especially
+00:23:02.799 important in situations where you have
+00:23:04.400 policy or you have financial facts or
+00:23:07.520 legal facts that you need to validate.
+00:23:09.360 Something like this is exactly why there
+00:23:13.039 was a very prominent fine leveled
+00:23:16.320 against a major consultant firm in the
+00:23:18.400 last two weeks. I think the fine came to
+00:23:20.000 close to half a million dollars because
+00:23:22.240 they could not verify facts around court
+00:23:25.440 cases in a document that they prepared
+00:23:28.080 and they hallucinated them and they
+00:23:29.760 didn't catch them. retrieval failed.
+00:23:32.480 Retrieval failed. And because the LLM is
+00:23:34.960 designed to keep the conversation going,
+00:23:36.559 it just inserted something plausible and
+00:23:38.480 nobody caught it. You need to be able to
+00:23:40.880 verify retrieval against ground truth.
+00:23:43.840 Now, if it's a small task, that might be
+00:23:45.520 the human at the other end of the chat,
+00:23:47.039 right? It just is a step that needs
+00:23:48.400 doing. If it's a large agentic system,
+00:23:50.080 it is the exact same fractal principle,
+00:23:52.080 but you need to do it in an automatic
+00:23:53.840 way using an AI agent for evals.
+00:23:56.559 Principle number eight, memory compounds
+00:23:59.120 through structure. So random
+00:24:01.039 accumulation actually does not compound.
+00:24:03.200 It just creates noise. Just adding stuff
+00:24:05.440 doesn't compound. If if we just added
+00:24:07.520 memories randomly the way we experience
+00:24:09.440 them in life and we had no lossiness, no
+00:24:11.919 forgetting ability, we would not be able
+00:24:14.320 to function as people. Forgetting is a
+00:24:16.240 technology for us. In the same way that
+00:24:18.240 forgetting is a technology for us,
+00:24:20.320 structured memory is a technology for
+00:24:22.480 LLM systems. So evergreen context goes
+00:24:25.039 one place, version prompts go another
+00:24:26.880 place, tagged exemplars go another
+00:24:28.559 place. And at a small scale, yes, you
+00:24:30.400 can do this. People are doing this with
+00:24:31.600 Obsidian, with notion, with other
+00:24:33.039 systems as individuals. And yes, you can
+00:24:35.440 scale this as a business. Same same
+00:24:37.440 principle. You let each interaction
+00:24:39.760 build without degradation if you have
+00:24:42.960 structured memory. Otherwise, you just
+00:24:46.000 have random accumulation. Otherwise, you
+00:24:48.000 have the pile of transcripts you never
+00:24:49.600 got to, and you're like, well, this is
+00:24:50.799 data. We're logging it. it's probably
+00:24:52.480 good. It just it's going to be random
+00:24:54.640 accumulation. It creates noise. You're
+00:24:56.880 not going to have structured memory.
+00:24:58.559 These are the principles that work. They
+00:25:00.400 work whether you are a power user with
+00:25:02.480 chat GPT or a developer building agentic
+00:25:05.200 systems. Frankly, they are guideposts
+00:25:07.919 for you if you are evaluating vendors in
+00:25:09.919 the memory space. These are tool
+00:25:11.679 agnostic principles. They're designed to
+00:25:13.679 scale with complexity and they're
+00:25:15.360 designed to give you keys that solve the
+00:25:17.600 memory problem because they make consist
+00:25:20.559 context persist reliably without the
+00:25:24.240 brittleleness that we see with current
+00:25:26.000 AI systems. And so my challenge to you
+00:25:28.559 as we wrap up this video, we've gone
+00:25:30.080 through root causes. We've gone through
+00:25:31.520 why memory is a hard problem. We've gone
+00:25:33.679 through eight principles for how to
+00:25:36.240 solve for this memory issue. Please take
+00:25:39.360 memory seriously. The reason it matters
+00:25:42.480 now is because if you solve memory now,
+00:25:47.360 you have an agentic AI edge. These
+00:25:50.640 systems are going to get cheaper and
+00:25:52.000 more powerful, but you can't assume
+00:25:53.600 they're magically going to solve for
+00:25:55.279 memory. As I said at the beginning,
+00:25:56.880 there's a chip level issue here. It is a
+00:25:58.799 hard hard problem. If they don't
+00:26:01.039 magically solve for it, if you take
+00:26:02.480 responsibility for memory and build it
+00:26:04.159 yourself in the way that works for you,
+00:26:06.480 you are starting the timer earlier than
+00:26:08.960 everybody else around you on getting
+00:26:11.600 memory that is functional across a
+00:26:13.679 long-term engagement with AI. Because
+00:26:15.520 you have to start to think, we're in
+00:26:17.440 year two of the AI revolution. Wouldn't
+00:26:19.600 it be great to have memory that goes
+00:26:21.520 back to the year two when you are
+00:26:23.600 working with AI systems in 10 years, in
+00:26:26.080 15 years, in 20 years? Everybody else is
+00:26:28.640 going to have memory that started much
+00:26:29.919 later and they're going to lose that
+00:26:32.880 discipline, that acceleration, that
+00:26:35.360 ability to manage deep work over time
+00:26:38.880 that AI is going to be capable of with
+00:26:41.200 proper memory structures. So there is a
+00:26:43.679 moment here for you to think about and
+00:26:47.120 put in place a memory structure that
+00:26:49.600 works. Don't lose the opportunity. This
+00:26:51.840 is a this is a complex one, but it's on
+00:26:54.159 you and me and all of us together to
+00:26:57.200 build memory systems that handle our own
+00:27:00.320 needs, whether that's personal needs or
+00:27:02.080 professional needs. I know you can do
+00:27:03.760 it. Drop in the comments how you're
+00:27:05.200 doing it because I think we should all
+00:27:06.240 crowdsource
