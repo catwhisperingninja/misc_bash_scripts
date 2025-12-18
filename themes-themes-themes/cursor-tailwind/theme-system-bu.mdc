@@ -1,0 +1,625 @@
+# Theme System Architecture Guide
+
+> **Purpose**: This document provides a complete guide for implementing the
+> HSL-based CSS variable theme system in any Cursor IDE project. This
+> architecture enables flexible, maintainable theming with Tailwind CSS
+> integration.
+
+## Overview
+
+This theme system uses **CSS custom properties (CSS variables)** with **HSL
+numeric triples** to define theme tokens. Tailwind CSS maps these variables to
+utility classes, enabling semantic color usage throughout the application. The
+system supports:
+
+- **Default theme** via `:root` CSS variables
+- **Scoped themes** via `[data-theme="theme-id"]` selectors
+- **Dark mode variants** via `.dark[data-theme="theme-id"]`
+- **Semantic token naming** (background, foreground, primary, etc.)
+- **Custom color palettes** (terminal colors, glow effects)
+
+### Architecture Principles
+
+1. **HSL Numeric Triples Only**: All CSS variables use format `60 100% 70%` (NOT
+   `hsl(60, 100%, 70%)`)
+2. **Tailwind Integration**: Colors mapped via `hsl(var(--token))` in
+   `tailwind.config.ts`
+3. **Token-Based Utilities**: Use semantic utilities (`bg-background`) instead
+   of raw colors
+4. **Scoped Application**: Apply themes to containers, not `<html>` element
+5. **Overlay Support**: Raw colors allowed only for color grading overlays
+
+---
+
+## Setup Instructions
+
+### Step 1: Configure Tailwind CSS
+
+Ensure your `tailwind.config.ts` maps colors to CSS variables using the
+`hsl(var(--token))` pattern:
+
+```typescript
+// tailwind.config.ts
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+	theme: {
+		extend: {
+			colors: {
+				border: "hsl(var(--border))",
+				input: "hsl(var(--input))",
+				ring: "hsl(var(--ring))",
+				background: "hsl(var(--background))",
+				foreground: "hsl(var(--foreground))",
+				primary: {
+					DEFAULT: "hsl(var(--primary))",
+					foreground: "hsl(var(--primary-foreground))",
+				},
+				secondary: {
+					DEFAULT: "hsl(var(--secondary))",
+					foreground: "hsl(var(--secondary-foreground))",
+				},
+				destructive: {
+					DEFAULT: "hsl(var(--destructive))",
+					foreground: "hsl(var(--destructive-foreground))",
+				},
+				muted: {
+					DEFAULT: "hsl(var(--muted))",
+					foreground: "hsl(var(--muted-foreground))",
+				},
+				accent: {
+					DEFAULT: "hsl(var(--accent))",
+					foreground: "hsl(var(--accent-foreground))",
+				},
+				popover: {
+					DEFAULT: "hsl(var(--popover))",
+					foreground: "hsl(var(--popover-foreground))",
+				},
+				card: {
+					DEFAULT: "hsl(var(--card))",
+					foreground: "hsl(var(--card-foreground))",
+				},
+				// Custom terminal colors (optional)
+				terminal: {
+					green: "hsl(var(--terminal-green))",
+					yellow: "hsl(var(--terminal-yellow))",
+					red: "hsl(var(--terminal-red))",
+					blue: "hsl(var(--terminal-blue))",
+					gray: "hsl(var(--terminal-gray))",
+				},
+			},
+			borderRadius: {
+				lg: "var(--radius)",
+				md: "calc(var(--radius) - 2px)",
+				sm: "calc(var(--radius) - 4px)",
+			},
+		},
+	},
+};
+
+export default config;
+```
+
+### Step 2: Define CSS Variables
+
+Create or update your main CSS file (e.g., `src/index.css`) with theme
+variables:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		/* Base theme tokens - use HSL numeric triples */
+		--background: 0 0% 6%;
+		--foreground: 60 100% 85%;
+
+		--card: 0 0% 8%;
+		--card-foreground: 60 100% 85%;
+
+		--popover: 0 0% 8%;
+		--popover-foreground: 60 100% 85%;
+
+		--primary: 60 100% 70%;
+		--primary-foreground: 0 0% 6%;
+
+		--secondary: 140 30% 15%;
+		--secondary-foreground: 60 100% 85%;
+
+		--muted: 0 0% 12%;
+		--muted-foreground: 0 0% 60%;
+
+		--accent: 120 60% 50%;
+		--accent-foreground: 0 0% 6%;
+
+		--destructive: 0 85% 60%;
+		--destructive-foreground: 0 0% 98%;
+
+		--border: 0 0% 20%;
+		--input: 0 0% 12%;
+		--ring: 60 100% 70%;
+
+		--radius: 0.25rem;
+
+		/* Custom tokens (optional) */
+		--terminal-green: 120 60% 50%;
+		--terminal-yellow: 60 100% 70%;
+		--terminal-red: 0 85% 60%;
+		--terminal-blue: 200 80% 60%;
+		--terminal-gray: 0 0% 60%;
+	}
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+	}
+}
+```
+
+### Step 3: Apply Theme in Components
+
+Use Tailwind token utilities instead of raw colors:
+
+```tsx
+// ✅ Correct: Use semantic tokens
+<div className="bg-background text-foreground border-border">
+  <button className="bg-primary text-primary-foreground">
+    Click me
+  </button>
+</div>
+
+// ❌ Incorrect: Don't use raw colors for normal components
+<div className="bg-gray-900 text-yellow-400">
+  {/* Avoid this pattern */}
+</div>
+```
+
+---
+
+## CSS Variable Structure
+
+### Required Format: HSL Numeric Triples
+
+**Critical**: CSS variables must use HSL numeric triples without the `hsl()`
+function wrapper:
+
+```css
+/* ✅ Correct */
+--primary: 60 100% 70%;
+
+/* ❌ Incorrect */
+--primary: hsl(60, 100%, 70%);
+--primary: oklch(0.7686 0.1647 70.0804);
+```
+
+### Standard Theme Tokens
+
+| Token                      | Purpose                     | Example Value |
+| -------------------------- | --------------------------- | ------------- |
+| `--background`             | Main page background        | `0 0% 6%`     |
+| `--foreground`             | Primary text color          | `60 100% 85%` |
+| `--card`                   | Card/panel background       | `0 0% 8%`     |
+| `--card-foreground`        | Text on cards               | `60 100% 85%` |
+| `--popover`                | Popover/dropdown background | `0 0% 8%`     |
+| `--popover-foreground`     | Text in popovers            | `60 100% 85%` |
+| `--primary`                | Primary brand color         | `60 100% 70%` |
+| `--primary-foreground`     | Text on primary             | `0 0% 6%`     |
+| `--secondary`              | Secondary accent            | `140 30% 15%` |
+| `--secondary-foreground`   | Text on secondary           | `60 100% 85%` |
+| `--muted`                  | Muted backgrounds           | `0 0% 12%`    |
+| `--muted-foreground`       | Muted text                  | `0 0% 60%`    |
+| `--accent`                 | Accent highlights           | `120 60% 50%` |
+| `--accent-foreground`      | Text on accent              | `0 0% 6%`     |
+| `--destructive`            | Error/danger color          | `0 85% 60%`   |
+| `--destructive-foreground` | Text on destructive         | `0 0% 98%`    |
+| `--border`                 | Border color                | `0 0% 20%`    |
+| `--input`                  | Input background            | `0 0% 12%`    |
+| `--ring`                   | Focus ring color            | `60 100% 70%` |
+| `--radius`                 | Border radius               | `0.25rem`     |
+
+---
+
+## Theme Application Patterns
+
+### Default Theme (Global)
+
+The default theme is applied automatically via `:root` selector. No additional
+markup needed:
+
+```tsx
+// Default theme is active
+<div className="bg-background text-foreground">
+	{/* Uses :root theme values */}
+</div>
+```
+
+### Scoped Theme (Container-Level)
+
+Apply a scoped theme to a specific container using `data-theme` attribute:
+
+```tsx
+// ✅ Correct: Apply theme to container
+<div data-theme="cmfvv5" className="dark bg-background min-h-screen">
+  {/* This container uses the scoped theme */}
+  <div className="bg-card text-card-foreground">
+    {/* Uses scoped theme values */}
+  </div>
+</div>
+
+// ❌ Incorrect: Don't apply to <html>
+<html data-theme="cmfvv5">
+  {/* Avoid this pattern */}
+</html>
+```
+
+### Defining Scoped Themes
+
+Add scoped theme definitions in your CSS file:
+
+```css
+@layer base {
+	/* Scoped theme definition */
+	[data-theme="cmfvv5"] {
+		--background: 0 0% 6%;
+		--foreground: 60 100% 85%;
+		--primary: 60 100% 70%;
+		/* ... other tokens ... */
+	}
+
+	/* Dark variant of scoped theme */
+	.dark[data-theme="cmfvv5"] {
+		--background: 0 0% 4%;
+		--foreground: 60 100% 90%;
+		/* ... darker variant tokens ... */
+	}
+}
+```
+
+### Theme Toggle (JavaScript/React)
+
+```tsx
+// Enable scoped theme
+const enableTheme = (themeId: string) => {
+	const container = document.getElementById("app-root");
+	if (container) {
+		container.setAttribute("data-theme", themeId);
+	}
+};
+
+// Disable scoped theme (revert to default)
+const disableTheme = () => {
+	const container = document.getElementById("app-root");
+	if (container) {
+		container.removeAttribute("data-theme");
+	}
+};
+
+// React example
+function ThemeWrapper({
+	themeId,
+	children,
+}: {
+	themeId?: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<div data-theme={themeId} className="dark bg-background min-h-screen">
+			{children}
+		</div>
+	);
+}
+```
+
+---
+
+## Color Conversion Utilities
+
+### OKLCH to HSL Conversion
+
+When importing themes from external sources (e.g., Tweakcn), convert OKLCH
+values to HSL numeric triples.
+
+#### Node.js Script
+
+```javascript
+// convert-oklch-to-hsl.js
+const { converter } = require("culori");
+
+const toHsl = converter("hsl");
+
+function convertOklchToHsl(l, c, h) {
+	const hsl = toHsl({ mode: "oklch", l, c, h });
+	// Format as numeric triple: "H S% L%"
+	return `${hsl.h.toFixed(2)} ${(hsl.s * 100).toFixed(2)}% ${(
+		hsl.l * 100
+	).toFixed(2)}%`;
+}
+
+// Example usage
+const hsl = convertOklchToHsl(0.7686, 0.1647, 70.0804);
+console.log(hsl); // "70.08 100% 76.86%"
+```
+
+#### Installation
+
+```bash
+npm install --save-dev culori
+```
+
+#### Online Conversion Tools
+
+- [Culori Color Converter](https://culorjs.org/)
+- [Color.js Visualizer](https://colorjs.io/apps/convert/)
+
+### Common Color Reference
+
+| Color          | HSL Triple    | Usage                    |
+| -------------- | ------------- | ------------------------ |
+| Pure Black     | `0 0% 0%`     | Opaque black backgrounds |
+| Pure White     | `0 0% 100%`   | Opaque white backgrounds |
+| Bright Yellow  | `60 100% 50%` | Terminal accents         |
+| Terminal Green | `120 60% 50%` | Success states           |
+| Terminal Red   | `0 85% 60%`   | Error states             |
+| Terminal Blue  | `200 80% 60%` | Info states              |
+| Dark Gray      | `0 0% 12%`    | Muted backgrounds        |
+| Medium Gray    | `0 0% 60%`    | Muted text               |
+
+---
+
+## Best Practices
+
+### 1. Use Token Utilities, Not Raw Colors
+
+```tsx
+// ✅ Correct: Semantic tokens
+<div className="bg-background text-foreground border-border">
+  <button className="bg-primary text-primary-foreground hover:bg-primary/90">
+    Submit
+  </button>
+</div>
+
+// ❌ Incorrect: Raw colors
+<div className="bg-gray-900 text-yellow-400 border-gray-700">
+  <button className="bg-yellow-500 text-black">
+    Submit
+  </button>
+</div>
+```
+
+### 2. Overlays for Color Grading
+
+Raw colors are allowed **only** for color grading overlays with blend modes:
+
+```tsx
+// ✅ Correct: Overlay pattern
+<div className="relative">
+	<img src="hero.jpg" alt="Hero" />
+	{/* Color grade overlay */}
+	<div className="absolute inset-0 pointer-events-none bg-[#2518FE]/50 mix-blend-overlay" />
+	<div className="relative z-10 text-foreground">{/* Content */}</div>
+</div>
+```
+
+**Overlay Guidelines**:
+
+- Use `absolute inset-0` for full coverage
+- Add `pointer-events-none` to prevent interaction blocking
+- Adjust opacity via `/NN` suffix (`/40`, `/50`, `/60`)
+- Experiment with blend modes: `mix-blend-overlay`, `mix-blend-multiply`,
+  `mix-blend-hard-light`
+
+### 3. Maintain Token Consistency
+
+When adding new theme tokens:
+
+1. Define in CSS variables (HSL numeric triple)
+2. Map in `tailwind.config.ts` using `hsl(var(--token))`
+3. Use semantic naming (`--accent`, not `--blue-500`)
+4. Include foreground variants for text contrast
+
+### 4. Accessibility Considerations
+
+- Ensure sufficient contrast between foreground and background tokens
+- Test with dark mode variants
+- Use semantic tokens that adapt to theme changes
+- Avoid hard-coded colors that don't respect theme
+
+### 5. Comment IDs for Overlays
+
+When using overlays, include comment IDs for easy reference:
+
+```tsx
+{
+	/* Color grade overlay [id: hero-color-grade] */
+}
+<div className="absolute inset-0 pointer-events-none bg-[#2518FE]/50 mix-blend-overlay" />;
+```
+
+---
+
+## Examples
+
+### Example 1: Basic Component with Theme
+
+```tsx
+/**
+ * Card component using theme tokens.
+ */
+export function Card({ children }: { children: React.ReactNode }) {
+	return (
+		<div className="bg-card text-card-foreground border-border rounded-lg p-6 shadow-lg">
+			{children}
+		</div>
+	);
+}
+```
+
+### Example 2: Scoped Theme Page
+
+```tsx
+/**
+ * Page component with scoped theme applied.
+ */
+export function ChatbotPage() {
+	return (
+		<div data-theme="cmfvv5" className="dark bg-background min-h-screen">
+			<header className="border-b border-border">
+				<nav className="bg-card">{/* Navigation */}</nav>
+			</header>
+			<main className="bg-background text-foreground">
+				{/* Page content */}
+			</main>
+		</div>
+	);
+}
+```
+
+### Example 3: Button with Theme Tokens
+
+```tsx
+/**
+ * Button component using semantic theme tokens.
+ */
+export function Button({ variant = "primary", children }: ButtonProps) {
+	const baseClasses = "px-4 py-2 rounded-md font-medium transition-colors";
+
+	const variantClasses = {
+		primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+		secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+		destructive:
+			"bg-destructive text-destructive-foreground hover:bg-destructive/90",
+		muted: "bg-muted text-muted-foreground hover:bg-muted/80",
+	};
+
+	return (
+		<button className={`${baseClasses} ${variantClasses[variant]}`}>
+			{children}
+		</button>
+	);
+}
+```
+
+### Example 4: Hero Section with Overlay
+
+```tsx
+/**
+ * Hero section with color grading overlay.
+ */
+export function Hero() {
+	return (
+		<section className="relative min-h-screen">
+			<img
+				src="/hero-bg.jpg"
+				alt="Hero background"
+				className="absolute inset-0 w-full h-full object-cover"
+			/>
+			{/* Color grade overlay [id: hero-color-grade] */}
+			<div className="absolute inset-0 pointer-events-none bg-[#2518FE]/50 mix-blend-overlay" />
+
+			<div className="relative z-10 container mx-auto px-4 py-20">
+				<h1 className="text-foreground text-4xl font-bold">Welcome</h1>
+				<p className="text-muted-foreground mt-4">Description text</p>
+			</div>
+		</section>
+	);
+}
+```
+
+### Example 5: Terminal-Styled Component
+
+```tsx
+/**
+ * Terminal window component using custom terminal colors.
+ */
+export function TerminalWindow() {
+	return (
+		<div className="bg-background border border-border rounded-lg p-4 font-mono">
+			<div className="flex gap-2 mb-4">
+				<div className="w-3 h-3 rounded-full bg-terminal-red" />
+				<div className="w-3 h-3 rounded-full bg-terminal-yellow" />
+				<div className="w-3 h-3 rounded-full bg-terminal-green" />
+			</div>
+			<div className="text-terminal-green">$ npm run dev</div>
+			<div className="text-terminal-gray">
+				Server running on http://localhost:3000
+			</div>
+		</div>
+	);
+}
+```
+
+---
+
+## Troubleshooting
+
+### Issue: Colors Not Applying
+
+**Symptoms**: Tailwind utilities show default colors instead of theme values.
+
+**Solutions**:
+
+1. Verify CSS variables are defined in `:root` or scoped selector
+2. Check `tailwind.config.ts` uses `hsl(var(--token))` format
+3. Ensure CSS file is imported in your entry point
+4. Verify Tailwind content paths include your CSS file
+
+### Issue: HSL Format Errors
+
+**Symptoms**: Colors appear incorrect or don't render.
+
+**Solutions**:
+
+1. Ensure variables use numeric triples: `60 100% 70%` (not
+   `hsl(60, 100%, 70%)`)
+2. Check for typos in variable names
+3. Verify Tailwind config matches variable names exactly
+
+### Issue: Scoped Theme Not Working
+
+**Symptoms**: `data-theme` attribute has no effect.
+
+**Solutions**:
+
+1. Verify scoped theme CSS selector matches: `[data-theme="theme-id"]`
+2. Ensure `data-theme` is on container element, not `<html>`
+3. Check CSS specificity (scoped theme should come after `:root`)
+4. Verify dark mode variant uses `.dark[data-theme="theme-id"]` selector
+
+---
+
+## Related Documentation
+
+- **Theme Swapping Guide**: See `THEME_SWAP.md` for detailed theme swapping
+  instructions
+- **Project Rules**: See `LOVEABLE_AGENT.md` for project-specific theme
+  application rules
+- **Tailwind Config**: See `tailwind.config.ts` for color mapping reference
+- **CSS Variables**: See `src/index.css` for theme variable definitions
+
+---
+
+## Quick Reference Checklist
+
+When implementing this theme system in a new project:
+
+- [ ] Configure `tailwind.config.ts` with `hsl(var(--token))` color mappings
+- [ ] Define CSS variables in main CSS file using HSL numeric triples
+- [ ] Use semantic Tailwind utilities (`bg-background`, `text-foreground`)
+- [ ] Apply scoped themes to containers, not `<html>`
+- [ ] Convert OKLCH values to HSL numeric triples if importing external themes
+- [ ] Use raw colors only for color grading overlays with blend modes
+- [ ] Test with both default and scoped themes
+- [ ] Verify dark mode variants if applicable
+- [ ] Ensure sufficient contrast for accessibility
+
+---
+
+**Last Updated**: 2025-01-06 **Version**: 1.0.0 **Maintained By**: Such Wow
+Stack Project
