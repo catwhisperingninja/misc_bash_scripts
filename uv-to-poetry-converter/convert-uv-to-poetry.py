@@ -165,26 +165,137 @@ def extract_scripts(content: str) -> List[Tuple[str, str]]:
     return scripts
 
 
-def detect_package_structure(project_dir: Path, project_name: Optional[str]) -> str:
-    """Detect the package structure and return packages configuration"""
+def _extract_setuptools_packages(pyproject_content: str) -> List[str]:
+    """Best-effort extraction of setuptools `packages = [...]`.
+
+    This is intentionally regex-based (no TOML dependency) and aims to preserve
+    explicit packaging intent like:
+
+        [tool.setuptools]
+        packages = ["scripts"]
+
+    Returns:
+        List of package names, or empty list if not found.
+    """
+
+    setuptools_match = re.search(
+        r'\[tool\.setuptools\](.*?)(?=\n\[|\Z)',
+        pyproject_content,
+        re.DOTALL,
+    )
+    if not setuptools_match:
+        return []
+
+    setuptools_section = setuptools_match.group(1)
+    packages_match = re.search(r'packages\s*=\s*\[(.*?)\]', setuptools_section, re.DOTALL)
+    if not packages_match:
+        return []
+
+    return re.findall(r'"([^"]+)"', packages_match.group(1))
+
+
+def _poetry_packages_config(packages: List[str], *, from_dir: Optional[str] = None) -> str:
+    """Render a Poetry `packages = [...]` config line."""
+
+    entries: List[str] = []
+    for pkg in packages:
+        if from_dir:
+            entries.append(f'{{include = "{pkg}", from = "{from_dir}"}}')
+        else:
+            entries.append(f'{{include = "{pkg}"}}')
+
+    return f'packages = [{", ".join(entries)}]'
+
+
+def detect_package_structure(
+    project_dir: Path,
+    project_name: Optional[str],
+    pyproject_content: str,
+) -> str:
+    """Detect the package structure and return Poetry `packages = ...` configuration."""
+
+    # 1) Respect explicit setuptools packaging when present.
+    setuptools_packages = _extract_setuptools_packages(pyproject_content)
+    if setuptools_packages:
+        src_dir = project_dir / "src"
+        if src_dir.exists() and src_dir.is_dir() and all(
+            (src_dir / pkg).is_dir() for pkg in setuptools_packages
+        ):
+            return _poetry_packages_config(setuptools_packages, from_dir="src")
+
+        # Root-layout fallback
+        if all((project_dir / pkg).is_dir() for pkg in setuptools_packages):
+            return _poetry_packages_config(setuptools_packages)
+
+        # If the directories don't exist (edge case), still preserve intent.
+        return _poetry_packages_config(setuptools_packages)
+
+    # 2) Heuristic: src/ layout
     src_dir = project_dir / "src"
-    
     if src_dir.exists() and src_dir.is_dir():
-        # Look for first directory in src/
-        subdirs = [d for d in src_dir.iterdir() 
-                   if d.is_dir() and not d.name.startswith('.')]
+        subdirs = [d for d in src_dir.iterdir() if d.is_dir() and not d.name.startswith('.')]
         if subdirs:
-            pkg_name = subdirs[0].name
-            return f'packages = [{{include = "{pkg_name}", from = "src"}}]'
-    
-    # Look for package in root directory
+            return _poetry_packages_config([subdirs[0].name], from_dir="src")
+
+    # 3) Heuristic: root package matches project name
     if project_name:
         pkg_name = project_name.replace('-', '_')
         pkg_path = project_dir / pkg_name
         if pkg_path.exists() and pkg_path.is_dir():
-            return f'packages = [{{include = "{pkg_name}"}}]'
-    
+            return _poetry_packages_config([pkg_name])
+
     return ""
+
+
+def _extract_preserved_sections(pyproject_content: str) -> str:
+    """Extract TOML sections to preserve when rewriting pyproject.toml.
+
+    We intentionally drop UV/PEP 621 project metadata sections and replace them with
+    Poetry equivalents, but keep tool configuration (ruff, mypy, pytest, etc.).
+
+    This is best-effort and does not fully parse TOML; it groups content by section
+    headers like `[tool.ruff]` or `[[tool.mypy.overrides]]`.
+    """
+
+    header_re = re.compile(r'^\s*\[\[?([^\]]+)\]\]?\s*(?:#.*)?$')
+
+    def should_drop(section_name: str) -> bool:
+        section_name = section_name.strip()
+        if section_name == "project" or section_name.startswith("project."):
+            return True
+        if section_name == "dependency-groups" or section_name.startswith("dependency-groups."):
+            return True
+        if section_name == "build-system":
+            return True
+        if section_name.startswith("tool.setuptools"):
+            return True
+        if section_name.startswith("tool.poetry"):
+            return True
+        return False
+
+    lines = pyproject_content.splitlines(keepends=True)
+    blocks: List[str] = []
+    current_block: List[str] = []
+    current_section: Optional[str] = None
+
+    for line in lines:
+        m = header_re.match(line)
+        if m:
+            # Flush previous block
+            if current_block and current_section and not should_drop(current_section):
+                blocks.append("".join(current_block).rstrip() + "\n")
+            current_block = [line]
+            current_section = m.group(1)
+        else:
+            if current_section is not None:
+                current_block.append(line)
+
+    # Flush last block
+    if current_block and current_section and not should_drop(current_section):
+        blocks.append("".join(current_block).rstrip() + "\n")
+
+    preserved = "\n".join(b.rstrip() for b in blocks).strip()
+    return (preserved + "\n") if preserved else ""
 
 
 def convert_pyproject_toml(project_dir: Path) -> bool:
@@ -233,7 +344,7 @@ def convert_pyproject_toml(project_dir: Path) -> bool:
             dev_deps = extract_dependencies(dep_groups_match.group(1), 'dev')
         
         # Detect package structure
-        packages_config = detect_package_structure(project_dir, name)
+        packages_config = detect_package_structure(project_dir, name, content)
         
         # Build new pyproject.toml content
         lines = ["[tool.poetry]"]
@@ -268,10 +379,10 @@ def convert_pyproject_toml(project_dir: Path) -> bool:
         lines.append("[tool.poetry.dependencies]")
         
         if requires_python:
-            python_version = requires_python.replace(">=", "^")
-            lines.append(f'python = "{python_version}"')
+            # Poetry supports PEP 440-style constraints (e.g. ">=3.10"), so keep as-is.
+            lines.append(f'python = "{requires_python}"')
         else:
-            lines.append('python = "^3.10"')
+            lines.append('python = ">=3.10"')
         
         for dep_name, dep_version in dependencies:
             lines.append(f'{dep_name} = {dep_version}')
@@ -296,8 +407,13 @@ def convert_pyproject_toml(project_dir: Path) -> bool:
         lines.append('requires = ["poetry-core"]')
         lines.append('build-backend = "poetry.core.masonry.api"')
         
+        preserved_sections = _extract_preserved_sections(content)
+
         # Write the new file
         new_content = "\n".join(lines) + "\n"
+        if preserved_sections:
+            new_content = new_content.rstrip() + "\n\n" + preserved_sections
+
         pyproject_path.write_text(new_content)
         
         return True
@@ -361,10 +477,21 @@ def convert_project(project_dir: Path) -> bool:
     
     print_success(f"Found pyproject.toml")
     
-    # Step 3: Check if this is a UV project
+    # Step 3: Check if this is a UV project (best-effort)
     content = pyproject_path.read_text()
-    if "[build-system]" not in content or "uv" not in content:
-        print_warning("This doesn't appear to be a UV project")
+
+    def _looks_like_uv_project(*, project_dir: Path, pyproject_content: str) -> bool:
+        if (project_dir / "uv.lock").exists():
+            return True
+        if "[tool.uv]" in pyproject_content:
+            return True
+        # Common in uv-managed projects; also used by newer standards, but a decent signal.
+        if "[dependency-groups]" in pyproject_content:
+            return True
+        return False
+
+    if not _looks_like_uv_project(project_dir=project_dir, pyproject_content=content):
+        print_warning("This doesn't appear to be a UV project (no uv.lock/[tool.uv]/[dependency-groups] found)")
         response = input("Continue anyway? (y/N): ")
         if response.lower() != 'y':
             print_info("Conversion cancelled")
