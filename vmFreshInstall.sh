@@ -15,6 +15,7 @@ sudo apt install -y openssh-client
 sudo apt install -y yt-dlp
 sudo apt install -y gh
 sudo apt install -y libfuse2
+sudo apt install -y asciinema
 
 
 # Install Visual Studio Code
