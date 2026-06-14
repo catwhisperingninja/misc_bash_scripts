@@ -22,7 +22,8 @@
 # Expected secret names (rename via the map below if yours differ):
 #   GH_TOKEN, DIGITALOCEAN_ACCESS_TOKEN, VERCEL_TOKEN, SNYK_TOKEN,
 #   TS_AUTHKEY, DOCKERHUB_USER, DOCKERHUB_TOKEN, AIKIDO_API_KEY,
-#   CODERABBIT_API_KEY, SENTRY_AUTH_TOKEN, ANTHROPIC_API_KEY, MEM0_API_KEY
+#   CODERABBIT_API_KEY, SENTRY_AUTH_TOKEN, ANTHROPIC_API_KEY,
+#   CLAUDE_CODE_OAUTH_TOKEN, MEM0_API_KEY
 #
 set -uo pipefail
 
@@ -36,17 +37,26 @@ ok(){   printf '\033[1;32m[ok]  %s\033[0m\n' "$1"; }
 skip(){ printf '\033[1;90m[skip] %s\033[0m\n' "$1"; }
 warn(){ printf '\033[1;31m[!!]  %s\033[0m\n' "$1"; }
 have(){ command -v "$1" >/dev/null 2>&1; }
+BACKEND_ERROR_REPORTED=0
 
 # ---- secret fetch ------------------------------------------------------------
 secret() {  # secret NAME -> prints value or empty
   local name="$1" val=""
   if [ "$SECRET_BACKEND" = "op" ]; then
-    val="$(op read "op://${OP_VAULT}/${name}/credential" 2>/dev/null)"
+    if ! val="$(op read "op://${OP_VAULT}/${name}/credential" 2>/dev/null)"; then
+      [ "$BACKEND_ERROR_REPORTED" -eq 1 ] || warn "1Password lookup failed (using empty values for missing secrets)."
+      BACKEND_ERROR_REPORTED=1
+      val=""
+    fi
   else
     local args=(secrets get "$name" --plain)
     [ -n "$DOPPLER_PROJECT" ] && args+=(--project "$DOPPLER_PROJECT")
     [ -n "$DOPPLER_CONFIG" ]  && args+=(--config "$DOPPLER_CONFIG")
-    val="$(doppler "${args[@]}" 2>/dev/null)"
+    if ! val="$(doppler "${args[@]}" 2>/dev/null)"; then
+      [ "$BACKEND_ERROR_REPORTED" -eq 1 ] || warn "Doppler lookup failed (using empty values for missing secrets)."
+      BACKEND_ERROR_REPORTED=1
+      val=""
+    fi
   fi
   printf '%s' "$val"
 }
@@ -54,7 +64,11 @@ secret() {  # secret NAME -> prints value or empty
 # ---- preflight ---------------------------------------------------------------
 if [ "$SECRET_BACKEND" = "doppler" ]; then
   have doppler || { warn "doppler CLI not found — run vmFreshInstall.sh first"; exit 1; }
-  [ -n "${DOPPLER_TOKEN:-}" ] || warn "DOPPLER_TOKEN not set — relying on existing 'doppler setup' if present"
+  if [ -z "${DOPPLER_TOKEN:-}" ] && ! doppler me >/dev/null 2>&1; then
+    warn "DOPPLER_TOKEN not set and no existing doppler setup detected."
+    warn "Run doppler setup once (or export DOPPLER_TOKEN) before re-running this script."
+    exit 1
+  fi
 else
   have op || { warn "op CLI not found — run vmFreshInstall.sh first"; exit 1; }
   [ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ] || { warn "OP_SERVICE_ACCOUNT_TOKEN not set"; exit 1; }
@@ -63,7 +77,7 @@ fi
 # ---- persist exports for tools that read env per-invocation -------------------
 PROFILE="$HOME/.vm_cli_env"
 : > "$PROFILE"
-persist(){ echo "export $1=\"$2\"" >> "$PROFILE"; }
+persist(){ printf 'export %s=%q\n' "$1" "$2" >> "$PROFILE"; }
 
 # ============================== gh ============================================
 if have gh; then
@@ -92,14 +106,32 @@ fi
 
 # ============================== tailscale ====================================
 if have tailscale; then
-  t="$(secret TS_AUTHKEY)"
-  if [ -n "$t" ]; then sudo tailscale up --authkey "$t" --ssh && ok "tailscale" || warn "tailscale"; else skip "tailscale (no TS_AUTHKEY)"; fi
+  if sudo tailscale ip -4 >/dev/null 2>&1 || sudo tailscale ip -6 >/dev/null 2>&1; then
+    ok "tailscale already connected"
+  else
+    t="$(secret TS_AUTHKEY)"
+    if [ -n "$t" ]; then
+      sudo tailscale up --authkey "$t" --ssh && ok "tailscale" || warn "tailscale"
+    else
+      skip "tailscale (no TS_AUTHKEY)"
+    fi
+  fi
 fi
 
 # ============================== docker login =================================
 if have docker; then
   u="$(secret DOCKERHUB_USER)"; t="$(secret DOCKERHUB_TOKEN)"
-  if [ -n "$u" ] && [ -n "$t" ]; then echo "$t" | docker login -u "$u" --password-stdin >/dev/null 2>&1 && ok "docker login" || warn "docker login"; else skip "docker login (no creds)"; fi
+  if [ -n "$u" ] && [ -n "$t" ]; then
+    if echo "$t" | docker login -u "$u" --password-stdin >/dev/null 2>&1; then
+      ok "docker login"
+    elif echo "$t" | sudo docker login -u "$u" --password-stdin >/dev/null 2>&1; then
+      ok "docker login (sudo fallback; relogin/newgrp recommended)"
+    else
+      warn "docker login"
+    fi
+  else
+    skip "docker login (no creds)"
+  fi
 fi
 
 # ============================== sentry-cli ===================================

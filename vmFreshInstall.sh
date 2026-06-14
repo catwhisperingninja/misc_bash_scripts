@@ -7,19 +7,19 @@
 #   - Idempotent: every step is guarded; safe to re-run.
 #   - Non-fatal: one failed install does NOT abort the run. Failures are
 #     collected and printed in a summary at the end (+ full log on disk).
-#   - Node: nvm is installed but NO node version is installed here.
-#     Laura manages node versions herself (18 / 22 / prod 26). npm-global
-#     tools are only installed if a node is already active (see install_npm_globals).
+#   - Node: nvm is installed from the latest release tag (runtime pinned),
+#     then Node 18 + 22 are installed and Node 22 is set default/active.
 #   - Auth is handled separately by vmAuthBootstrap.sh (run after this).
 #
 # Usage:
 #   chmod +x vmFreshInstall.sh && ./vmFreshInstall.sh
-#   ./vmFreshInstall.sh --npm-globals   # also install vercel/snyk/claude-code if node active
+#   ./vmFreshInstall.sh --npm-globals   # also install vercel/snyk/claude-code globals
 #   ./vmFreshInstall.sh --grub-hyperv   # also apply Hyper-V 1080p grub fix
 #
 set -uo pipefail
 
 # ----- flags -----
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DO_NPM_GLOBALS=0
 DO_GRUB=0
 for arg in "$@"; do
@@ -40,6 +40,10 @@ note()  { printf '\033[1;33m-- %s\033[0m\n' "$1"; }
 have()  { command -v "$1" >/dev/null 2>&1; }
 try()   { "$@" || { echo "!! FAILED: $*"; FAILED+=("$*"); }; }
 apt_in(){ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y "$@"; }
+ensure_line_in_file() {
+  local line="$1" file="$2"
+  grep -Fqx "$line" "$file" 2>/dev/null || printf '%s\n' "$line" >> "$file"
+}
 
 echo "Logging to: $LOG"
 
@@ -52,11 +56,15 @@ try sudo DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
 step "Base packages"
 try apt_in \
   ca-certificates curl wget gnupg lsb-release software-properties-common \
-  build-essential git jq unzip net-tools htop bridge-utils \
+  build-essential git jq unzip iproute2 iputils-ping htop \
   openssh-server openssh-client yt-dlp gh libfuse2 asciinema \
   python3 python3-venv python3-pip pipx ffmpeg default-jdk
 # default-jdk = Java for Maestri CLI (Laura flagged this)
 try pipx ensurepath
+
+# ============================================================
+step "Doppler CLI (secrets)"
+have doppler || try bash -c 'curl -Ls https://cli.doppler.com/install.sh | sudo sh'
 
 # fastfetch via ppa (kept from original)
 if ! have fastfetch; then
@@ -68,9 +76,11 @@ fi
 # ============================================================
 step "Visual Studio Code"
 if ! have code; then
+  sudo install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /tmp/microsoft.gpg
-  sudo install -o root -g root -m 644 /tmp/microsoft.gpg /etc/apt/trusted.gpg.d/
-  echo "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" | sudo tee /etc/apt/sources.list.d/vscode.list
+  sudo install -o root -g root -m 644 /tmp/microsoft.gpg /etc/apt/keyrings/microsoft.gpg
+  echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/vscode stable main" \
+    | sudo tee /etc/apt/sources.list.d/vscode.list > /dev/null
   try sudo apt-get update
   try apt_in code
 else note "code already installed"; fi
@@ -96,26 +106,48 @@ if ! have docker; then
 else note "docker already installed"; fi
 
 # ============================================================
-step "nvm (node version manager) — node versions NOT installed (Laura manages those)"
+step "nvm + Node (latest nvm tag, Node 18 + 22, default 22)"
+NVM_VERSION="${NVM_VERSION:-$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -r .tag_name)}"
+if [ -z "${NVM_VERSION:-}" ] || [ "$NVM_VERSION" = "null" ]; then
+  NVM_VERSION="v0.40.3"
+  note "Could not resolve latest nvm release tag; falling back to ${NVM_VERSION}."
+fi
 if [ ! -d "${NVM_DIR:-$HOME/.nvm}" ]; then
-  try bash -c 'curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash'
+  try bash -c "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh | bash"
 else note "nvm already present"; fi
-note "Install your versions yourself, e.g.: nvm install 18 && nvm install 22 && nvm install 26"
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$NVM_DIR/nvm.sh"
+  try nvm install 18
+  try nvm install 22
+  try nvm alias default 22
+  try nvm use 22
+else
+  note "nvm shell loader missing; skip Node installation."
+fi
 
 # ============================================================
 step "Poetry (Python pkg manager — your standard)"
 if ! have poetry; then
   try bash -c 'curl -sSL https://install.python-poetry.org | python3 -'
-  note "Ensure ~/.local/bin is on PATH (pipx ensurepath handles this)."
 else note "poetry already installed"; fi
+export PATH="$HOME/.local/bin:$PATH"
+
+# ============================================================
+step "Shell profile bootstrap (.bashrc)"
+BASHRC="$HOME/.bashrc"
+touch "$BASHRC"
+ensure_line_in_file 'export PATH="$HOME/.local/bin:$PATH"' "$BASHRC"
+ensure_line_in_file 'export NVM_DIR="$HOME/.nvm"' "$BASHRC"
+ensure_line_in_file '[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"' "$BASHRC"
+ensure_line_in_file '[ -s "$NVM_DIR/bash_completion" ] && . "$NVM_DIR/bash_completion"' "$BASHRC"
+ensure_line_in_file '[ -f "$HOME/.vm_cli_env" ] && . "$HOME/.vm_cli_env"' "$BASHRC"
+try bash -c ". \"$BASHRC\""
 
 # ============================================================
 step "Semgrep (pairs with Snyk in your CI/CD)"
 have semgrep || try pipx install semgrep
-
-# ============================================================
-step "Doppler CLI (secrets)"
-have doppler || try bash -c 'curl -Ls https://cli.doppler.com/install.sh | sudo sh'
 
 # ============================================================
 step "doctl (DigitalOcean CLI) — latest release"
@@ -175,6 +207,17 @@ if ! have kitty; then
 else note "kitty already installed"; fi
 
 # ============================================================
+step "Kitty config sync (~/.config/kitty)"
+if [ -f "$SCRIPT_DIR/kitty/kitty.conf" ] && [ -f "$SCRIPT_DIR/kitty/session.conf" ]; then
+  mkdir -p "$HOME/.config/kitty"
+  try cp "$SCRIPT_DIR/kitty/kitty.conf" "$HOME/.config/kitty/kitty.conf"
+  try cp "$SCRIPT_DIR/kitty/session.conf" "$HOME/.config/kitty/session.conf"
+  note "kitty config/session copied to ~/.config/kitty."
+else
+  note "Repo kitty config files not found at ./kitty; skipping copy."
+fi
+
+# ============================================================
 step "CodeRabbit CLI (cr)"
 have cr || try bash -c 'curl -fsSL https://cli.coderabbit.ai/install.sh | sh'
 
@@ -185,6 +228,7 @@ have sentry-cli || try bash -c 'curl -sL https://sentry.io/get-cli/ | sh'
 # ============================================================
 step "Aikido local scanner (Docker image — no apt package)"
 if have docker; then
+  try sudo bash -c 'for _ in $(seq 1 15); do docker info >/dev/null 2>&1 && exit 0; sleep 2; done; exit 1'
   try sudo docker pull aikidosecurity/local-scanner:latest
   note "Scan: docker run --rm -v \"\$(pwd):/app\" aikidosecurity/local-scanner scan /app --apikey \$AIKIDO_API_KEY ..."
 else note "Skipping Aikido pull — docker not available yet."; fi
@@ -207,7 +251,7 @@ install_npm_globals() {
   fi
 }
 if [ "$DO_NPM_GLOBALS" -eq 1 ]; then install_npm_globals; else
-  note "npm globals skipped (run with --npm-globals once a node version is active)."
+  note "npm globals skipped (run with --npm-globals when you want global CLI installs)."
 fi
 
 # ============================================================
