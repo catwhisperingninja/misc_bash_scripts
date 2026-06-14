@@ -1,4 +1,5 @@
 {
-    "github.copilot.chat.terminalChatLocation": "quickChat",
-    "github.copilot.advanced": {}
+	"github.copilot.chat.terminalChatLocation": "quickChat",
+	"github.copilot.advanced": {},
+	"snyk.advanced.autoSelectOrganization": true
 }
