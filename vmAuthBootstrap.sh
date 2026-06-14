@@ -109,16 +109,32 @@ if have sentry-cli; then
 fi
 
 # ============================== api keys (env-only) ==========================
-for k in AIKIDO_API_KEY ANTHROPIC_API_KEY MEM0_API_KEY CODERABBIT_API_KEY; do
+for k in AIKIDO_API_KEY ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN MEM0_API_KEY; do
   v="$(secret "$k")"; [ -n "$v" ] && { persist "$k" "$v"; ok "$k persisted"; } || skip "$k (not in vault)"
 done
 
-# ============================== holdouts (cannot fully automate) =============
+# ============================== coderabbit (non-interactive API key) =========
+CR_BIN="$(command -v coderabbit || command -v cr || true)"
+if [ -n "$CR_BIN" ]; then
+  t="$(secret CODERABBIT_API_KEY)"
+  if [ -n "$t" ]; then
+    "$CR_BIN" auth login --api-key "$t" >/dev/null 2>&1 \
+      && ok "coderabbit (api-key)" \
+      || warn "coderabbit — enable the Usage-Based Add-on to mint an Agentic API key, or SSH-tunnel the browser login"
+  else skip "coderabbit (no CODERABBIT_API_KEY)"; fi
+fi
+
+# ============================== headless notes ===============================
 echo
-warn "Interactive holdouts — these resist headless auth, do them once by hand:"
-echo "  - coderabbit:  'cr auth login' opens a browser. (CODERABBIT_API_KEY persisted above if CI-mode is supported.)"
-echo "  - claude code: Max-plan login is OAuth/browser. For API-key mode, ANTHROPIC_API_KEY is persisted in ~/.vm_cli_env."
-echo "  - 1Password desktop/biometric unlock is separate from the 'op' service-account path used here."
+warn "Headless reality — none of these needs a GUI ON THE SERVER:"
+echo "  - 1Password: the service-account path in this script IS the headless method. No biometric, no GUI on the box."
+echo "  - Claude Code: run 'claude setup-token' ONCE on a machine WITH a browser (your laptop), then store the"
+echo "      1-year token as CLAUDE_CODE_OAUTH_TOKEN in Doppler. Keeps MAX-plan billing. Never use --bare (forces API billing)."
+echo "  - CodeRabbit: needs the Usage-Based Add-on enabled to generate an Agentic API key (CODERABBIT_API_KEY)."
+echo
+echo "  SSH-tunnel fallback for ANY browser-OAuth CLI on a headless box:"
+echo "    laptop\$ ssh -L 54545:localhost:54545 user@server   # run the login on the server, open the printed"
+echo "                                                        # http://localhost:54545/... URL in your laptop browser"
 echo
 note "Add to your shell rc once:   [ -f ~/.vm_cli_env ] && source ~/.vm_cli_env"
 ok "Auth bootstrap complete. Tokens that are env-only live in ~/.vm_cli_env (chmod 600 recommended)."
