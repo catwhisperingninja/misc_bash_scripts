@@ -1,0 +1,408 @@
+/*
+ * Typora Theme: Lime Green Dark
+ * Based on the p5.js Lime Green palette — dark mode variant
+ *
+ * Headers: Neon Pink #E639A3
+ * Primary accent: Lime Green #A3D739
+ * Body: light gray on charcoal
+ */
+
+:root {
+    --bg: #333333;
+    --fg: #B8B8B8;
+    --fg-secondary: #888888;
+    --heading: #E639A3;
+    --accent: #A3D739;
+    --accent-hover: #b8e650;
+    --link: #A3D739;
+    --link-hover: #b8e650;
+    --border: #4a4a4a;
+    --border-accent: #A3D739;
+    --code-bg: #2a2a2a;
+    --code-fg: #f07aac;
+    --blockquote-border: #E639A3;
+    --blockquote-bg: #3d2a35;
+    --table-stripe: #3a3a3a;
+    --selection: rgba(163, 215, 57, 0.3);
+    --highlight: rgba(212, 165, 57, 0.2);
+    --sidebar-bg: #2a2a2a;
+    --sidebar-fg: #999999;
+    --sidebar-active: #A3D739;
+}
+
+/* ===== Base ===== */
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    font-family: "Inter", "SF Pro Text", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--fg);
+    line-height: 1.7;
+    background: var(--bg);
+}
+
+#write {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 30px 30px 100px;
+}
+
+::selection {
+    background: var(--selection);
+}
+
+/* ===== Headers — Neon Pink ===== */
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--heading);
+    font-weight: 700;
+    line-height: 1.3;
+    margin-top: 1.8em;
+    margin-bottom: 0.6em;
+}
+
+h1 {
+    font-size: 2em;
+    border-bottom: 2px solid var(--heading);
+    padding-bottom: 0.3em;
+}
+
+h2 {
+    font-size: 1.6em;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.25em;
+}
+
+h3 {
+    font-size: 1.3em;
+}
+
+h4 {
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+h5 {
+    font-size: 1em;
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+h6 {
+    font-size: 0.95em;
+    font-weight: 600;
+    opacity: 0.7;
+}
+
+/* ===== Paragraphs & Text ===== */
+
+p {
+    margin: 0 0 1em;
+}
+
+strong {
+    font-weight: 700;
+    color: #d0d0d0;
+}
+
+em {
+    font-style: italic;
+}
+
+mark {
+    background: var(--highlight);
+    color: #d4a539;
+    padding: 0.1em 0.3em;
+    border-radius: 3px;
+}
+
+/* ===== Links — Lime Green ===== */
+
+a {
+    color: var(--link);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s ease;
+}
+
+a:hover {
+    color: var(--link-hover);
+    border-bottom-color: var(--link-hover);
+}
+
+/* ===== Blockquotes — Pink left border ===== */
+
+blockquote {
+    border-left: 4px solid var(--blockquote-border);
+    background: var(--blockquote-bg);
+    margin: 1em 0;
+    padding: 0.8em 1.2em;
+    color: var(--fg-secondary);
+    border-radius: 0 4px 4px 0;
+}
+
+blockquote p:last-child {
+    margin-bottom: 0;
+}
+
+/* ===== Code ===== */
+
+code {
+    font-family: "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", Menlo, monospace;
+    font-size: 0.9em;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+}
+
+/* Fenced code blocks */
+pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 1em 1.2em;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 1em 0;
+}
+
+pre code {
+    background: none;
+    color: var(--fg);
+    padding: 0;
+    font-size: 0.88em;
+}
+
+/* ===== Lists ===== */
+
+ul, ol {
+    padding-left: 1.8em;
+    margin: 0.5em 0 1em;
+}
+
+li {
+    margin: 0.25em 0;
+}
+
+li > p {
+    margin: 0.3em 0;
+}
+
+/* Task lists */
+.md-task-list-item > input {
+    margin-left: -1.3em;
+    margin-right: 0.3em;
+    accent-color: var(--accent);
+}
+
+.md-task-list-item > input:checked + p {
+    color: var(--fg-secondary);
+    text-decoration: line-through;
+}
+
+/* ===== Tables ===== */
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+th, td {
+    border: 1px solid var(--border);
+    padding: 0.5em 0.8em;
+    text-align: left;
+}
+
+th {
+    background: #4a6b1a;
+    color: #e0e0e0;
+    font-weight: 600;
+}
+
+tr:nth-child(even) {
+    background: var(--table-stripe);
+}
+
+/* ===== Horizontal Rule ===== */
+
+hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--heading));
+    margin: 2em 0;
+    border-radius: 1px;
+}
+
+/* ===== Images ===== */
+
+img {
+    max-width: 100%;
+    border-radius: 4px;
+    margin: 0.5em 0;
+}
+
+/* ===== Footnotes ===== */
+
+.footnotes {
+    font-size: 0.9em;
+    color: var(--fg-secondary);
+    border-top: 1px solid var(--border);
+    margin-top: 2em;
+    padding-top: 1em;
+}
+
+sup.md-footnote {
+    color: var(--heading);
+    font-weight: 600;
+}
+
+/* ===== Table of Contents ===== */
+
+.md-toc {
+    font-size: 0.95em;
+}
+
+.md-toc-inner {
+    margin-left: 0 !important;
+}
+
+.md-toc-h1 {
+    font-weight: 700;
+}
+
+.md-toc a {
+    color: var(--fg);
+}
+
+.md-toc a:hover {
+    color: var(--accent);
+}
+
+/* ===== YAML Front Matter ===== */
+
+pre.md-meta-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--heading);
+    color: var(--fg-secondary);
+    font-size: 0.88em;
+    padding: 0.8em 1em;
+    border-radius: 4px;
+}
+
+/* ===== Sidebar ===== */
+
+#typora-sidebar {
+    background: var(--sidebar-bg);
+    color: var(--sidebar-fg);
+}
+
+.file-node-content:hover,
+.file-node-content.active {
+    color: var(--sidebar-active);
+}
+
+.file-tree-node.active > .file-node-content {
+    color: var(--sidebar-active);
+    font-weight: 600;
+}
+
+/* ===== Source Code Mode ===== */
+
+.cm-s-inner {
+    font-family: "JetBrains Mono", "Fira Code", "SF Mono", Menlo, monospace;
+    font-size: 0.9em;
+    color: var(--fg);
+    background: var(--bg);
+}
+
+.cm-header {
+    color: var(--heading) !important;
+}
+
+.cm-link {
+    color: var(--accent) !important;
+}
+
+.cm-string {
+    color: var(--accent) !important;
+}
+
+/* ===== Focus Mode ===== */
+
+.on-focus-mode .md-end-block:not(.md-focus):not(.md-focus-container) {
+    opacity: 0.4;
+}
+
+.on-focus-mode .md-end-block:not(.md-focus):not(.md-focus-container):hover {
+    opacity: 0.75;
+}
+
+/* ===== Scrollbar ===== */
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+/* ===== Math (MathJax/KaTeX) ===== */
+
+.MathJax_Display {
+    color: var(--fg) !important;
+}
+
+/* ===== Mermaid ===== */
+
+.md-diagram-panel {
+    margin: 1em 0;
+}
+
+/* ===== Print ===== */
+
+@media print {
+    html {
+        font-size: 13px;
+    }
+
+    body {
+        background: #ffffff;
+        color: #333333;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--heading);
+    }
+
+    a {
+        color: #333333;
+        text-decoration: underline;
+    }
+
+    pre {
+        border: 1px solid #ccc;
+        background: #f5f5f5;
+    }
+
+    th {
+        background: #eee;
+        color: #333;
+    }
+}
