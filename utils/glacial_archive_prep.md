@@ -1,3 +1,36 @@
+# Automation & operational notes — added 2026-08-28
+
+This pipeline is now driven by **`glacial-archive-driver.sh`** (same folder): it runs the
+per-folder `tar` -> `sha256` -> upload -> verify -> Archive-tier flow across the whole
+source tree, resumably (a ledger skips folders already `verified`), isolates per-folder
+failures, posts progress to Slack, and never touches the source. The spec below is the
+source of truth; the script just executes it.
+
+**Direct-to-container, no VM.** Upload straight to the Blob container via `az` / `rclone`
+-- no Azure VM in the path, so no compute bill. The VNet + NSG are network hygiene only;
+the gate on the Mac-at-home upload is the **storage-account firewall IP allowlist** (see
+Netsec checklist), not the NSG. Home public IP confirmed stable (~4 yrs) -> no allowlist churn.
+
+**Keyless auth.** `az login` + `Storage Blob Data Contributor` RBAC + `--auth-mode login`.
+rclone rides the same session with `env_auth = true`. No account keys, no SAS, no secret manager.
+
+**Upload tool:** `rclone` by default (best resume across overnight drops); `az` as fallback.
+
+**Staging space.** The driver stages one folder's tar at a time before upload, so it needs
+scratch >= your largest single folder. Prep: wipe the dead 4 TB Time Machine drive with
+**`wipe-disk.sh`** (same folder) and set the driver's `WORKDIR` to it. If scratch is tight,
+the plain-tar (media) path can stream instead --
+`tar -c FOLDER | tee >(shasum -a256 >f.sha256) | rclone rcat azure:archive/glacial/f.tar` --
+trading weaker mid-file resume for ~no scratch.
+
+**Companion scripts in this folder**
+- `glacial-archive-driver.sh` -- batched, resumable, self-minding archive runner.
+- `wipe-disk.sh` -- guard-railed macOS disk erase (full zero-fill or quick header wipe +
+  repartition); refuses the boot disk, requires a typed `ERASE`. Reclaims the old Time
+  Machine drive as staging.
+
+---
+
 tar's the right call — better than zip here: it preserves Mac metadata, permissions, and symlinks, has no practical size limit, and streams cleanly. Zip is weaker on POSIX/Mac attributes. So no worries on the format itself.
 But the honest reframe: what protects you from corruption isn't the archive format — it's the pipeline around it. tar has no whole-file integrity check baked in, so wrap it in a few layers and "no worry" becomes real:
 
