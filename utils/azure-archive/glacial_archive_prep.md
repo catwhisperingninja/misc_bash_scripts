@@ -32,6 +32,9 @@ instead --
 
 - `glacial-archive-driver.sh` -- batched, resumable, self-minding archive
   runner.
+- `-azure-archive.sh` - azcopy, batched: use
+  `openssl dgst -sha256 -out /Volumes/4TB_SCRATCH/MUSIC-TOOLS.tar.sha256.txt /Volumes/4TB_SCRATCH/MUSIC-TOOLS.tar`
+  instead of `shasum` for far quicker checksum creation.
 - `wipe-disk.sh` -- guard-railed macOS disk erase (full zero-fill or quick
   header wipe + repartition); refuses the boot disk, requires a typed `ERASE`.
   Reclaims the old Time Machine drive as staging.
