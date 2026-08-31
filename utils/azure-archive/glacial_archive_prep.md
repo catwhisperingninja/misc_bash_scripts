@@ -1,66 +1,89 @@
 # Automation & operational notes — added 2026-08-28
 
-This pipeline is now driven by **`glacial-archive-driver.sh`** (same folder): it runs the
-per-folder `tar` -> `sha256` -> upload -> verify -> Archive-tier flow across the whole
-source tree, resumably (a ledger skips folders already `verified`), isolates per-folder
-failures, posts progress to Slack, and never touches the source. The spec below is the
-source of truth; the script just executes it.
+This pipeline is now driven by **`glacial-archive-driver.sh`** (same folder): it
+runs the per-folder `tar` -> `sha256` -> upload -> verify -> Archive-tier flow
+across the whole source tree, resumably (a ledger skips folders already
+`verified`), isolates per-folder failures, posts progress to Slack, and never
+touches the source. The spec below is the source of truth; the script just
+executes it.
 
-**Direct-to-container, no VM.** Upload straight to the Blob container via `az` / `rclone`
--- no Azure VM in the path, so no compute bill. The VNet + NSG are network hygiene only;
-the gate on the Mac-at-home upload is the **storage-account firewall IP allowlist** (see
-Netsec checklist), not the NSG. Home public IP confirmed stable (~4 yrs) -> no allowlist churn.
+**Direct-to-container, no VM.** Upload straight to the Blob container via `az` /
+`rclone` -- no Azure VM in the path, so no compute bill. The VNet + NSG are
+network hygiene only; the gate on the Mac-at-home upload is the
+**storage-account firewall IP allowlist** (see Netsec checklist), not the NSG.
+Home public IP confirmed stable (~4 yrs) -> no allowlist churn.
 
-**Keyless auth.** `az login` + `Storage Blob Data Contributor` RBAC + `--auth-mode login`.
-rclone rides the same session with `env_auth = true`. No account keys, no SAS, no secret manager.
+**Keyless auth.** `az login` + `Storage Blob Data Contributor` RBAC +
+`--auth-mode login`. rclone rides the same session with `env_auth = true`. No
+account keys, no SAS, no secret manager.
 
-**Upload tool:** `rclone` by default (best resume across overnight drops); `az` as fallback.
+**Upload tool:** `rclone` by default (best resume across overnight drops); `az`
+as fallback.
 
-**Staging space.** The driver stages one folder's tar at a time before upload, so it needs
-scratch >= your largest single folder. Prep: wipe the dead 4 TB Time Machine drive with
-**`wipe-disk.sh`** (same folder) and set the driver's `WORKDIR` to it. If scratch is tight,
-the plain-tar (media) path can stream instead --
-`tar -c FOLDER | tee >(shasum -a256 >f.sha256) | rclone rcat azure:archive/glacial/f.tar` --
-trading weaker mid-file resume for ~no scratch.
+**Staging space.** The driver stages one folder's tar at a time before upload,
+so it needs scratch >= your largest single folder. Prep: wipe the dead 4 TB Time
+Machine drive with **`wipe-disk.sh`** (same folder) and set the driver's
+`WORKDIR` to it. If scratch is tight, the plain-tar (media) path can stream
+instead --
+`tar -c FOLDER | tee >(shasum -a256 >f.sha256) | rclone rcat azure:archive/glacial/f.tar`
+-- trading weaker mid-file resume for ~no scratch.
 
 **Companion scripts in this folder**
-- `glacial-archive-driver.sh` -- batched, resumable, self-minding archive runner.
-- `wipe-disk.sh` -- guard-railed macOS disk erase (full zero-fill or quick header wipe +
-  repartition); refuses the boot disk, requires a typed `ERASE`. Reclaims the old Time
-  Machine drive as staging.
+
+- `glacial-archive-driver.sh` -- batched, resumable, self-minding archive
+  runner.
+- `wipe-disk.sh` -- guard-railed macOS disk erase (full zero-fill or quick
+  header wipe + repartition); refuses the boot disk, requires a typed `ERASE`.
+  Reclaims the old Time Machine drive as staging.
 
 ---
 
-tar's the right call — better than zip here: it preserves Mac metadata, permissions, and symlinks, has no practical size limit, and streams cleanly. Zip is weaker on POSIX/Mac attributes. So no worries on the format itself.
-But the honest reframe: what protects you from corruption isn't the archive format — it's the pipeline around it. tar has no whole-file integrity check baked in, so wrap it in a few layers and "no worry" becomes real:
+tar's the right call — better than zip here: it preserves Mac metadata,
+permissions, and symlinks, has no practical size limit, and streams cleanly. Zip
+is weaker on POSIX/Mac attributes. So no worries on the format itself. But the
+honest reframe: what protects you from corruption isn't the archive format —
+it's the pipeline around it. tar has no whole-file integrity check baked in, so
+wrap it in a few layers and "no worry" becomes real:
 
 # per-dir tars
 
-1. Per-folder tars, not one monster. tar each big folder separately. If something ever corrupts, it's one folder to redo, not the whole night — and you verify/re-upload pieces independently.
+1. Per-folder tars, not one monster. tar each big folder separately. If
+   something ever corrupts, it's one folder to redo, not the whole night — and
+   you verify/re-upload pieces independently.
 2. Checksum everything.
 
 # already-compressed media (b-roll, video, images) → plain tar, don't waste CPU compressing
 
-tar -cf media.tar "Media Folder"
-shasum -a 256 media.tar > media.tar.sha256
+tar -cvf media.tar "Media Folder" shasum -a 256 media.tar > media.tar.sha256
 
 # compressible stuff (text/code/uncompressed) → zstd: multithreaded, far faster than gzip on 100s of GB
-tar -c "Folder" | zstd -T0 > folder.tar.zst      # bump to -T0 -12 if you want smaller and have the CPU hours
-shasum -a 256 folder.tar.zst > folder.tar.zst.sha256
-Keep those .sha256 files — they're how future-you proves a restore came back bit-identical.
-3. Upload with the AWS CLI, not a naive stream. aws s3 cp does multipart upload automatically for big files — chunks them, validates each part's checksum, retries on drops. That's exactly "upload big chunks without corrupting them," handled:
-aws s3 cp folder.tar.zst s3://your-bucket/archive/ --storage-class DEEP_ARCHIVE
-(If you want bulletproof resume across an overnight connection drop, rclone to S3 is even better — it's chunked, checksummed, and resumable across restarts.)
-4. Verify before you delete the source. Test the archive locally first (zstd -t folder.tar.zst, or tar -tf to list it), confirm the checksum, upload, and only then let go of the original. The rule from before still rules: source stays until the cloud copy is proven.
-Two notes: use the built-in macOS tar (bsdtar) — it keeps Mac xattrs/resource forks that GNU tar can silently drop. And given your threat model, if any of this is sensitive, encrypt the tar client-side before upload (age or gpg) — one extra step, and it's your data, not Amazon's.
+
+tar -c "Folder" | zstd -T0 > folder.tar.zst # bump to -T0 -12 if you want
+smaller and have the CPU hours shasum -a 256 folder.tar.zst >
+folder.tar.zst.sha256 Keep those .sha256 files — they're how future-you proves a
+restore came back bit-identical. 3. Upload with the AWS CLI, not a naive stream.
+aws s3 cp does multipart upload automatically for big files — chunks them,
+validates each part's checksum, retries on drops. That's exactly "upload big
+chunks without corrupting them," handled: aws s3 cp folder.tar.zst
+s3://your-bucket/archive/ --storage-class DEEP_ARCHIVE (If you want bulletproof
+resume across an overnight connection drop, rclone to S3 is even better — it's
+chunked, checksummed, and resumable across restarts.) 4. Verify before you
+delete the source. Test the archive locally first (zstd -t folder.tar.zst, or
+tar -tf to list it), confirm the checksum, upload, and only then let go of the
+original. The rule from before still rules: source stays until the cloud copy is
+proven. Two notes: use the built-in macOS tar (bsdtar) — it keeps Mac
+xattrs/resource forks that GNU tar can silently drop. And given your threat
+model, if any of this is sensitive, encrypt the tar client-side before upload
+(age or gpg) — one extra step, and it's your data, not Amazon's.
 
 ---
 
 # Azure Blob (glacial / Archive tier) — same pipeline, different upload leg
 
-Target: ~14TB media perma-backup. StorageV2 + LRS + Cool default + Archive after verify.
-No HNS / SFTP / NFSv3 on this account (one-way-ish door; not needed for tar uploads).
-Auth: `az login` + RBAC — avoid storage account keys / connection strings.
+Target: ~14TB media perma-backup. StorageV2 + LRS + Cool default + Archive after
+verify. No HNS / SFTP / NFSv3 on this account (one-way-ish door; not needed for
+tar uploads). Auth: `az login` + RBAC — avoid storage account keys / connection
+strings.
 
 ## Auth (no keys)
 
@@ -79,8 +102,10 @@ az role assignment create \
   --scope "$(az storage account show -g "$RG" -n "$ACCT" --query id -o tsv)"
 ```
 
-Use `--auth-mode login` on all blob commands. Skip account keys unless something forces them.
-Managed identity: optional later (helps Azure-side runners/VMs, not your Mac). Local unattended later = service principal + same RBAC, still no account keys.
+Use `--auth-mode login` on all blob commands. Skip account keys unless something
+forces them. Managed identity: optional later (helps Azure-side runners/VMs, not
+your Mac). Local unattended later = service principal + same RBAC, still no
+account keys.
 
 ## Variables
 
@@ -117,13 +142,17 @@ az storage account create \
   --enable-hierarchical-namespace false
 ```
 
-Portal gotchas: Standard (not Premium block blob — no Archive tier), LRS, Data Lake/HNS **No**, SFTP **No**.
-HNS / SFTP / NFS can wait forever on this vault. MI / SMB / Azure Files can be added later.
+Portal gotchas: Standard (not Premium block blob — no Archive tier), LRS, Data
+Lake/HNS **No**, SFTP **No**. HNS / SFTP / NFS can wait forever on this vault.
+MI / SMB / Azure Files can be added later.
 
 ## Same-region VNet + NSG (subnet hygiene)
 
 NSG protects **NICs/subnets** (VMs, private endpoints' effective path, etc.).
-Storage is **not** "inside" the subnet unless you add a **private endpoint**. For Mac-at-home uploads, the control that matters most is the **storage account firewall** (allow your public IP). VNet+NSG is still right as the network home for anything you colocate later.
+Storage is **not** "inside" the subnet unless you add a **private endpoint**.
+For Mac-at-home uploads, the control that matters most is the **storage account
+firewall** (allow your public IP). VNet+NSG is still right as the network home
+for anything you colocate later.
 
 ```bash
 # VNet + subnet
@@ -158,15 +187,19 @@ az network vnet subnet update \
   --network-security-group "$NSG"
 ```
 
-Outbound: leave default allow unless you have a reason to lock it (breaks updates/package pulls on VMs).
-Azure's built-in `AllowVnetInBound` / `AllowAzureLoadBalancerInBound` baselines still apply alongside your rules — fine.
+Outbound: leave default allow unless you have a reason to lock it (breaks
+updates/package pulls on VMs). Azure's built-in `AllowVnetInBound` /
+`AllowAzureLoadBalancerInBound` baselines still apply alongside your rules —
+fine.
 
-Optional later (stronger, more moving parts): **private endpoint** for blob on this subnet + DNS. Not required for IP-allowlisted public endpoint.
+Optional later (stronger, more moving parts): **private endpoint** for blob on
+this subnet + DNS. Not required for IP-allowlisted public endpoint.
 
 ## Storage network: public access locked to your IP (+ VNet if you want)
 
-"Public blob access disallowed" (`--allow-blob-public-access false`) = no anonymous $web/container public read.
-Separately, **storage firewall** restricts who can reach the data plane at all:
+"Public blob access disallowed" (`--allow-blob-public-access false`) = no
+anonymous $web/container public read. Separately, **storage firewall** restricts
+who can reach the data plane at all:
 
 ```bash
 # deny by default; allow your home public IP
@@ -191,10 +224,14 @@ az storage account network-rule add \
 ```
 
 Notes:
+
 - Home IP changes → re-run `network-rule add` (and remove stale IPs).
-- `az` from your Mac hits storage via the **IP allowlist**, not via the VNet, unless you VPN/bastion into the VNet.
-- Portal "exceptions: Allow trusted Azure services" — enable if backup/monitoring tooling needs it; otherwise leave off.
-- Do **not** set `--public-network-access Disabled` unless private endpoint + DNS is already working — you'll lock yourself out from home.
+- `az` from your Mac hits storage via the **IP allowlist**, not via the VNet,
+  unless you VPN/bastion into the VNet.
+- Portal "exceptions: Allow trusted Azure services" — enable if
+  backup/monitoring tooling needs it; otherwise leave off.
+- Do **not** set `--public-network-access Disabled` unless private endpoint +
+  DNS is already working — you'll lock yourself out from home.
 
 ## Container
 
@@ -222,7 +259,8 @@ zstd -t folder.tar.zst    # or: tar -tf media.tar
 
 ## Upload + Archive tier
 
-`az storage blob upload` multipart-chunks large files. Upload first (Cool/Hot), verify, then tier down.
+`az storage blob upload` multipart-chunks large files. Upload first (Cool/Hot),
+verify, then tier down.
 
 ```bash
 az storage blob upload \
@@ -250,7 +288,8 @@ az storage blob set-tier \
   --auth-mode login
 ```
 
-Overnight resume: rclone → Azure Blob is stronger across drops than raw az; then `set-tier` with az.
+Overnight resume: rclone → Azure Blob is stronger across drops than raw az; then
+`set-tier` with az.
 
 ```bash
 # rclone config → type azureblob, auth via az / SP (not account key if you can help it)
@@ -300,12 +339,12 @@ shasum -a 256 -c folder.tar.zst.sha256
 
 ## AWS → Azure map
 
-| AWS | Azure |
-|---|---|
+| AWS                                        | Azure                                                   |
+| ------------------------------------------ | ------------------------------------------------------- |
 | `aws s3 cp … --storage-class DEEP_ARCHIVE` | `az storage blob upload` then `set-tier --tier Archive` |
-| bucket | storage account + container |
-| IAM profile | `az login` + RBAC (`Storage Blob Data Contributor`) |
-| multipart | built into `blob upload` / rclone |
+| bucket                                     | storage account + container                             |
+| IAM profile                                | `az login` + RBAC (`Storage Blob Data Contributor`)     |
+| multipart                                  | built into `blob upload` / rclone                       |
 
 ## Netsec checklist (your basics, tightened)
 
@@ -314,11 +353,13 @@ shasum -a 256 -c folder.tar.zst.sha256
 - [x] `--allow-blob-public-access false` (no anonymous public blobs)
 - [x] Storage firewall `--default-action Deny` + allow **your public IP**
 - [x] VNet `10.0.0.0/16`, subnet `default` `10.0.0.0/24`, new NSG associated
-- [x] NSG allow TCP 22/3389/80/443 **only from your IP**; explicit deny-all inbound at 4096
-- [x] No storage account keys in scripts — Owner + data-plane RBAC + `--auth-mode login`
+- [x] NSG allow TCP 22/3389/80/443 **only from your IP**; explicit deny-all
+      inbound at 4096
+- [x] No storage account keys in scripts — Owner + data-plane RBAC +
+      `--auth-mode login`
 - [ ] Remember: NSG ≠ storage firewall (both useful; different layers)
 - [ ] Mac upload path = storage IP allowlist (update when home IP changes)
-- [ ] Private endpoint optional later; don't disable public network access until that works
+- [ ] Private endpoint optional later; don't disable public network access until
+      that works
 - [ ] HNS/SFTP/NFS left off on purpose
 - [ ] Source stays on disk until remote size + sha256 verified
-
