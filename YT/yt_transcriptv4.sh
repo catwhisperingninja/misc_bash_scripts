@@ -38,6 +38,10 @@ rm -f *"$video_id"*.srt *"$video_id"*.vtt
 #   - Chrome TLS impersonation (--impersonate chrome)
 # VPN alone (e.g. Mullvad) is not enough and can make bot checks worse.
 #
+# Subtitle format: SRT only. YouTube's auto-caption VTT uses rolling display
+# windows that repeat the prior line in every cue, which produced duplicated
+# transcripts. The SRT variant is served already collapsed.
+#
 # Env overrides:
 #   YT_SLEEP_SUBTITLES=0|5|10     base sleep before timedtext (default 0)
 #   YT_IMPERSONATE=chrome|""      yt-dlp --impersonate target (default chrome)
@@ -58,8 +62,8 @@ last_err=""
 has_sub_file_for_lang() {
     local lang="$1"
     find . -maxdepth 1 \( \
-        -name "*$video_id*.$lang.vtt" -o -name "*$video_id*.$lang.srt" -o \
-        -name "*$video_id*.vtt" -o -name "*$video_id*.srt" \
+        -name "*$video_id*.$lang.srt" -o -name "*$video_id*.$lang.vtt" -o \
+        -name "*$video_id*.srt" -o -name "*$video_id*.vtt" \
     \) 2>/dev/null | grep -q .
 }
 
@@ -78,11 +82,20 @@ ytdlp_auth_args() {
 run_ytdlp_subs() {
     local lang="$1" sleep_s="$2"
     local -a cmd
+<<<<<<< HEAD:YT/yt_transcriptv4.sh
     # Convert to SRT: YouTube's auto VTT uses rolling captions that repeat each
     # line 2-3x. yt-dlp's SRT conversion collapses them into clean single cues.
     cmd=(yt-dlp --write-subs --write-auto-subs --skip-download
          --sub-langs "$lang"
          --sub-format "srt/vtt/best"
+=======
+    # SRT is required, not cosmetic: YouTube serves SRT already collapsed,
+    # while auto-caption VTT uses rolling windows that repeat the previous
+    # line in every cue. --convert-subs is a safety net if only VTT exists.
+    cmd=(yt-dlp --write-subs --write-auto-subs --skip-download
+         --sub-langs "$lang"
+         --sub-format "srt/best"
+>>>>>>> 40794ae (update yt readme):YT/yt_transcriptv3.sh
          --convert-subs srt
          --retries 2
          --retry-sleep 2
@@ -161,11 +174,15 @@ if [ "$dl_ok" -ne 1 ]; then
     exit 1
 fi
 
-# Prefer original-language auto caps, then plain en, then any match.
+# SRT first (de-duplicated by YouTube), VTT only as a last resort.
+# Within each format: original-language auto caps, then plain en, then any.
 subtitle_file=$({
-    find . -maxdepth 1 \( -name "*$video_id*.en-orig.vtt" -o -name "*$video_id*.en-orig.srt" \)
-    find . -maxdepth 1 \( -name "*$video_id*.en.vtt" -o -name "*$video_id*.en.srt" \)
-    find . -maxdepth 1 \( -name "*$video_id*.srt" -o -name "*$video_id*.vtt" \)
+    find . -maxdepth 1 -name "*$video_id*.en-orig.srt"
+    find . -maxdepth 1 -name "*$video_id*.en.srt"
+    find . -maxdepth 1 -name "*$video_id*.srt"
+    find . -maxdepth 1 -name "*$video_id*.en-orig.vtt"
+    find . -maxdepth 1 -name "*$video_id*.en.vtt"
+    find . -maxdepth 1 -name "*$video_id*.vtt"
 } 2>/dev/null | awk 'NF && !seen[$0]++' | head -1)
 
 if [ -z "$subtitle_file" ]; then
@@ -174,6 +191,12 @@ if [ -z "$subtitle_file" ]; then
 fi
 
 echo "Found subtitle file: $subtitle_file"
+case "$subtitle_file" in
+    *.vtt)
+        echo "Warning: fell back to VTT. Auto-caption VTT repeats each line" >&2
+        echo "         (rolling captions), so expect duplicated text." >&2
+        ;;
+esac
 
 # Clean the transcript: one line per cue -> "START_TIME TEXT"
 # Supports both SRT and VTT by scanning blocks separated by blank lines

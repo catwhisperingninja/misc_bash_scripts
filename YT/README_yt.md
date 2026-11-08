@@ -1,180 +1,181 @@
 # YouTube Transcript Extractor
 
-A simple bash script to extract auto-generated transcripts from YouTube videos using `yt-dlp`.
+`yt_transcriptv3.sh` downloads a YouTube video's captions with `yt-dlp` and emits a
+flat, timestamped plain-text transcript.
 
-## Overview
-
-This standalone script downloads auto-generated subtitles from YouTube videos and outputs them in VTT (WebVTT) format. It was created as a lightweight alternative for extracting YouTube transcripts without requiring complex frameworks.
-
-*Note: The script references the [fabric repo](https://github.com/danielmiessler/fabric) as inspiration, but this is a standalone tool that doesn't require fabric.ai installation.*
+No video is downloaded — captions only.
 
 ## Prerequisites
 
-### Required
-- **yt-dlp**: A YouTube downloader tool
-- **bash**: Standard on macOS and Linux systems
+- **yt-dlp** — `brew install yt-dlp`
+- **curl_cffi** — required for the browser-impersonation fast path. The Homebrew
+  `yt-dlp` formula already bundles it. Verify with:
 
-### Installation
+  ```bash
+  yt-dlp --list-impersonate-targets
+  ```
 
-#### macOS (using Homebrew)
-```bash
-brew install yt-dlp
-```
-
-#### macOS (using pip)
-```bash
-pip3 install yt-dlp
-```
-
-#### Linux (Ubuntu/Debian)
-```bash
-sudo apt update
-sudo apt install yt-dlp
-```
-
-#### Linux (using pip)
-```bash
-pip3 install yt-dlp
-```
+  If that prints nothing, impersonation is unavailable; see
+  [Rate limiting](#rate-limiting-http-429) below.
 
 ## Usage
 
-### Basic Usage
+```bash
+./yt_transcriptv3.sh "https://youtu.be/VIDEO_ID"
+```
 
-1. **Edit the script** to set your target YouTube video:
-   ```bash
-   VideoURL="https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
-   ```
+Accepted URL forms: `watch?v=`, `youtu.be/`, and `/live/`.
 
-2. **Run the script**:
-   ```bash
-   chmod +x yt_transcript.sh
-   ./yt_transcript.sh
-   ```
+Output is written to the **current working directory**, so `cd` to wherever you
+want the transcript to land.
 
-3. **View the transcript** output directly in your terminal
+Typical run is a few seconds.
 
-4. Or run this:
+## Output
 
-yt-dlp --write-auto-subs --skip-download --sub-format srt --sub-langs en "https://youtu.be/GV30QpxZTzg?si=adg2Xf70-KeXfupI" && grep -v "^[0-9]*$" *.srt | grep -v "^[0-9][0-9]:[0-9][0-9]:[0-9][0-9]" | grep -v "^$" > clean_transcript.txt
+Two files are left in the working directory:
 
-### Configuration
+| File | Description |
+| --- | --- |
+| `<Video-Title-Slug>.txt` | The final transcript |
+| `<Video Title> [<id>].<lang>.srt` | The raw caption file (not auto-removed) |
 
-The script has two main configuration variables at the top:
+The transcript carries a two-line header, then one line per caption cue:
+
+```
+URL: https://youtu.be/bmqPLYht22g
+Title: How-Trump-Plans-to-Steal-the-Midterm-Elections
+00:00:05.359 Thank you. Thank you, Scott.
+00:00:11.920 The Trump White House is attempting to
+00:00:15.280 put into place a series of mechanisms
+00:00:18.560 to fix or invalidate the midterm
+00:00:20.960 elections.
+```
+
+If `<Slug>.txt` already exists, the script appends `-1`, `-2`, … rather than
+overwriting.
+
+## Configuration
+
+All configuration is via environment variables.
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `YT_SLEEP_SUBTITLES` | `0` | Seconds to wait before the caption fetch |
+| `YT_IMPERSONATE` | `chrome` | `yt-dlp --impersonate` target; set empty to disable |
+| `YT_SUB_LANGS` | `en-orig en` | Language try order, space-separated |
+| `YT_RETRY_SLEEPS` | `5 10` | Escalating sleeps used only after a 429 |
+
+Examples:
 
 ```bash
-VideoURL="https://www.youtube.com/watch?v=FtnGiI9MGgA"  # Change this to your target video
-LANG="en"                                               # Language code for subtitles
-p
-\\
-## Output Format
+# Start with a 5s delay instead of 0
+YT_SLEEP_SUBTITLES=5 ./yt_transcriptv3.sh "URL"
 
-The script outputs transcripts in **VTT (WebVTT)** format, which includes:
-- Timestamp markers
-- Subtitle text
-- Formatting information
+# Disable TLS impersonation
+YT_IMPERSONATE= ./yt_transcriptv3.sh "URL"
 
-### Example Output
-```
-WEBVTT
-Kind: captions
-Language: en
-
-00:00:01.200 --> 00:00:04.800
-Welcome to this tutorial on YouTube transcripts
-
-00:00:05.000 --> 00:00:08.500
-Today we'll learn how to extract subtitles automatically
+# Spanish, falling back to English
+YT_SUB_LANGS="es en" ./yt_transcriptv3.sh "URL"
 ```
 
-## How It Works
+## How it works
 
-1. **Creates temporary file**: Uses `mktemp` to create a secure temporary file
-2. **Downloads subtitles**: Uses `yt-dlp` to extract auto-generated subtitles without downloading the video
-3. **Outputs content**: Displays the VTT transcript content to stdout
-4. **Cleanup**: Comments show optional secure deletion of temporary files
+1. Parse the video ID out of the URL.
+2. Remove any stale `.srt` / `.vtt` for that ID in the working directory.
+3. For each language in `YT_SUB_LANGS`, attempt the caption download — first with
+   no delay, then retrying with the `YT_RETRY_SLEEPS` values **only** if YouTube
+   returns HTTP 429.
+4. Select the best caption file, preferring SRT over VTT.
+5. Flatten cues to `START_TIME TEXT`, stripping VTT inline tags such as `<c>`.
+6. Prepend the URL/title header and write the final `.txt`.
+
+### Why SRT and not VTT
+
+This matters — it is not a cosmetic preference.
+
+YouTube's auto-caption **VTT** uses rolling display windows, so captions appear to
+scroll on screen. Every cue repeats the previous line:
+
+```
+00:00:15.270  The Trump White House is attempting to
+00:00:15.280  The Trump White House is attempting to put into place a series of mechanisms
+00:00:18.550  put into place a series of mechanisms
+00:00:18.560  put into place a series of mechanisms to fix or invalidate the midterm
+```
+
+Flattening that yields a transcript where nearly every line appears two or three
+times. The **SRT** variant is served already collapsed — one cue, one line.
+
+For the same video: 44 KB SRT vs 198 KB VTT, 653 output lines vs 1303.
+
+Converting VTT to SRT after the fact does **not** help; `--convert-subs` preserves
+the repeats. The format must be requested as SRT up front, which is what the
+script does via `--sub-format "srt/best"`.
+
+If SRT is genuinely unavailable, the script falls back to VTT, still produces a
+transcript, and prints a warning to stderr that the text will contain duplicates.
+
+> **Note on repeated phrasing:** not every repeat is a bug. Lines that recur in
+> clean SRT output — a speaker saying "will not save us" three times — are
+> genuine speech, not rolling-caption artifacts.
+
+## Rate limiting (HTTP 429)
+
+YouTube applies strict rate limits to its `timedtext` caption endpoint. The
+failure looks like:
+
+```
+ERROR: Unable to download video subtitles for 'en': HTTP Error 429: Too Many Requests
+```
+
+The script's primary defense is **browser TLS impersonation**
+(`--impersonate chrome`), which in practice avoids the limit with no delay at all.
+If a 429 still occurs it retries with short sleeps (5s, then 10s).
+
+Further options if you are persistently limited:
+
+```bash
+# Longer initial delay
+YT_SLEEP_SUBTITLES=30 ./yt_transcriptv3.sh "URL"
+
+# Cookies from a logged-in browser session
+yt-dlp --cookies-from-browser chrome --impersonate chrome \
+  --write-auto-subs --skip-download --sub-langs en-orig "URL"
+```
+
+Otherwise, wait a few minutes — the limit is per-IP and time-based.
+
+Background: [yt-dlp#13831](https://github.com/yt-dlp/yt-dlp/issues/13831).
+
+See also `optimize-vpn-bypass.md` in this directory for VPN/cookie notes.
 
 ## Troubleshooting
 
-### Common Issues
+**`Could not extract video ID from URL`**
+The URL form isn't recognized. Use a `watch?v=`, `youtu.be/`, or `/live/` link.
 
-**"No video found"**
-- Verify the YouTube URL is correct and accessible
-- Check if the video is public (private videos won't work)
-
-**"No subtitles available"**
-- Not all videos have auto-generated subtitles
-- Try changing the language code (`LANG` variable)
-- Some videos only have manually-added subtitles in specific languages
-
-**"yt-dlp command not found"**
-- Install yt-dlp using the installation instructions above
-- Verify installation: `yt-dlp --version`
-
-**Permission denied**
-- Make the script executable: `chmod +x yt_transcript.sh`
-
-### Advanced Usage
-
-**Save transcript to file:**
-```bash
-./yt_transcript.sh > transcript.vtt
-```
-
-**Extract multiple languages:**
-```bash
-# Modify the script or create copies with different LANG values
-LANG="en" ./yt_transcript.sh > transcript_en.vtt
-LANG="es" ./yt_transcript.sh > transcript_es.vtt
-```
-
-**Check available subtitle languages:**
-```bash
-yt-dlp --list-subs "https://www.youtube.com/watch?v=VIDEO_ID"
-```
-
-## Security Notes
-
-- The script uses temporary files that are automatically cleaned up by the system
-- The commented `srm` command can be uncommented for secure file deletion on systems that have it installed
-- Always verify YouTube URLs before running to avoid downloading unintended content
-
-## Examples
-
-### Extract transcript from a specific video
-```bash
-# Edit the VideoURL in the script
-VideoURL="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-LANG="en"
-
-# Run the script
-./yt_transcript.sh
-```
-
-### Batch processing multiple videos
-Create multiple script copies or modify the script to accept URL as parameter:
+**`No subtitle files found` / `may not have subtitles available`**
+The video has no captions in the requested languages. Check what exists:
 
 ```bash
-#!/bin/bash
-VideoURL="$1"  # First command line argument
-LANG="${2:-en}"  # Second argument or default to 'en'
-# ... rest of script
+yt-dlp --list-subs "URL"
 ```
 
-Then use:
+Then set `YT_SUB_LANGS` accordingly.
+
+**Transcript contains duplicated lines**
+The script fell back to VTT (a stderr warning is printed when this happens). See
+[Why SRT and not VTT](#why-srt-and-not-vtt).
+
+**`yt-dlp: command not found`**
+Install it: `brew install yt-dlp`.
+
+## Related one-liner
+
+Quick ad-hoc extraction without the script:
+
 ```bash
-./yt_transcript.sh "https://www.youtube.com/watch?v=VIDEO1" "en"
-./yt_transcript.sh "https://www.youtube.com/watch?v=VIDEO2" "es"
+yt-dlp --write-auto-subs --skip-download --sub-format srt --sub-langs en-orig \
+  --impersonate chrome "URL"
 ```
-
-## Contributing
-
-This is a simple utility script. Feel free to modify it for your specific needs:
-- Add error handling
-- Support for different output formats
-- Batch processing capabilities
-- Integration with other tools
-
-## License
-
-This script is provided as-is for educational and personal use.
